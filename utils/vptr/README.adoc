@@ -1,0 +1,64 @@
+Software Managed Virtual Pointer
+================================
+
+This folder contains the implementation of a software-managed virtual
+pointer that facilitates a pointer interface for SYCL buffers.
+This virtual address
+space is non-dereferenciable on the host, but accessors can be obtained
+in the SYCL kernels.
+
+This differes from the legacy_pointer interface in that a contiguous
+virtual address space of size_t bits is created. 
+
+Developers looking for a simple replacement of malloc/free functions should
+use the Legacy Pointer interface.
+In situations where developers needs complete addressing of the entire
+device memory space, developers should use this software-managed 
+virtual pointer.
+
+Contents
+--------
+
+[source,bash]
+--
+.
+├── CMakeLists.txt
+├── include
+│   ├── pointer_alias.hpp
+│   └── virtual_ptr.hpp
+├── README.adoc
+└── tests
+    ├── basic.cc
+    ├── CMakeLists.txt
+    ├── CMakeLists.txt.in
+    └── offset.cc
+--
+
+Usage
+-----
+
+Include the _virtual_ptr_ header file in your program.
+Replace your device malloc and free operations with *codeplay::SYCLmalloc*
+and *codeplay::SYCLfree*.
+This implementations are not re-entrant, even thought the underlying SYCL 
+buffer objects are thread-safe.
+
+To retrieve the buffer from the virtual pointer, use the 
+*codeplay::PointerMapper::get_buffer* function.
+The offset can be retrieved using the
+*codeplay::PointerMapper::get_offset* function.
+
+See the tests for basic usage examples.
+Note that the pointer is non-dereferenciable on the host, but host accessors
+can be constructed once the buffer is retrieved.
+
+
+Building tests
+--------------
+
+1. mkdir build
+2. cd build
+3. cmake ../ -DCOMPUTECPP_PACKAGE_ROOT_DIR=/path/to/computecpp/package/ -DCMAKE_MODULE_PATH=../../../cmake/Modules/
+4. make
+
+
