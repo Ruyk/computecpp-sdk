@@ -40,7 +40,7 @@ Usage
 Include the _virtual_ptr_ header file in your program.
 Replace your device malloc and free operations with *codeplay::SYCLmalloc*
 and *codeplay::SYCLfree*.
-This implementations are not re-entrant, even thought the underlying SYCL 
+These functions are not re-entrant, even thought the underlying SYCL 
 buffer objects are thread-safe.
 
 To retrieve the buffer from the virtual pointer, use the 
