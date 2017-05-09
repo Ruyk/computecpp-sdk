@@ -42,12 +42,12 @@ const sycl_acc_mode sycl_acc_rw = sycl_acc_mode::read_write;
 
 using namespace codeplay;
 
-using buffer_t = PointerMapper::buffer_t;
+using buffer_t = PointerMapper<>::buffer_t;
 
 
 struct kernel {
   using acc_type = 
-            cl::sycl::accessor<PointerMapper::buffer_data_type,
+            cl::sycl::accessor<codeplay::buffer_data_type,
                                 1, sycl_acc_rw, sycl_acc_buffer>;
   acc_type accB_;
   int i_;
@@ -66,7 +66,7 @@ struct kernel {
 };
 
 TEST(offset, basic_test) {
-  PointerMapper pMap;
+  PointerMapper<> pMap;
   {
     ASSERT_EQ(pMap.count(), 0u);
     float * myPtr = static_cast<float *>(
@@ -74,7 +74,7 @@ TEST(offset, basic_test) {
 
     ASSERT_NE(myPtr, nullptr);
 
-    ASSERT_FALSE(PointerMapper::is_nullptr(myPtr));
+    ASSERT_FALSE(PointerMapper<>::is_nullptr(myPtr));
 
     ASSERT_EQ(pMap.count(), 1u);
 
@@ -105,7 +105,7 @@ TEST(offset, basic_test) {
 
 
 TEST(offset, 2d_indexing) {
-  PointerMapper pMap;
+  PointerMapper<> pMap;
   {
     const unsigned SIZE = 8;
     ASSERT_EQ(pMap.count(), 0u);
@@ -114,7 +114,7 @@ TEST(offset, 2d_indexing) {
 
     ASSERT_NE(myPtr, nullptr);
 
-    ASSERT_FALSE(PointerMapper::is_nullptr(myPtr));
+    ASSERT_FALSE(PointerMapper<>::is_nullptr(myPtr));
 
     ASSERT_EQ(pMap.count(), 1u);
     

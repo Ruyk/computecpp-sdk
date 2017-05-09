@@ -35,17 +35,23 @@
 #include <unordered_map>
 #include <queue>
 
+#ifndef VIRTUAL_PTR_VERBOSE
 // Show extra information when allocating and de-allocating
 // #define VIRTUAL_PTR_VERBOSE 1
 #define VIRTUAL_PTR_VERBOSE 0
+#endif  // VIRTUAL_PTR_VERBOSE
 
 namespace codeplay {
+ 
+ 
+using buffer_data_type = uint8_t;
 
 /**
  * PointerMapper
  *  Associates fake pointers with buffers.
  *
  */
+template<typename buffer_allocator=cl::sycl::default_allocator<buffer_data_type> >
 class PointerMapper {
  public:
   /* pointer information definitions
@@ -113,7 +119,7 @@ class PointerMapper {
      * already a virtual_pointer_t, but we have no way of
      * checking
      */
-    virtual_pointer_t(void *ptr)
+    virtual_pointer_t(const void *ptr)
         : m_contents(reinterpret_cast<base_ptr_t>(ptr)){};
 
     /**
@@ -135,13 +141,10 @@ class PointerMapper {
     return (static_cast<void*>(ptr) == nullptr);
   }
 
-  /* Data type to create buffer of byte-size elements
-   */
-  using buffer_data_type = uint8_t;
 
   /* basic type for all buffers
    */
-  using buffer_t = cl::sycl::buffer<buffer_data_type, 1>;
+  using buffer_t = cl::sycl::buffer<buffer_data_type, 1, buffer_allocator>;
 
   /** 
    * Node that stores information about a device allocation.
@@ -154,7 +157,8 @@ class PointerMapper {
       bool _free;
 
       pMapNode_t(buffer_t b, size_t size, bool f)
-        : _b{b}, _size{size}, _free{f} { }
+        : _b{b}, _size{size}, _free{f} { 
+        _b.set_final_data(nullptr); }
 
       bool operator<(const pMapNode_t& rhs) {
         return (_size < rhs._size);
@@ -170,8 +174,8 @@ class PointerMapper {
    * a pointer of the given size.
    * \param requiredSize Size attemted to reclaim
    */
-  pointerMap_t::iterator get_insertion_point(size_t requiredSize) {
-    pointerMap_t::iterator retVal;
+  typename pointerMap_t::iterator get_insertion_point(size_t requiredSize) {
+    typename pointerMap_t::iterator retVal;
     bool reuse = false;
     if (!m_freeList.empty()) {
       // lets try to re-use an existing block
@@ -202,16 +206,16 @@ class PointerMapper {
    * \param virtual_pointer_ptr The virtual pointer to obtain the node of
    * \throws std::out:of_range if the pointer is not found or pMap is empty
    */
-  pointerMap_t::iterator get_node(virtual_pointer_t ptr) {
+  typename pointerMap_t::iterator get_node(const virtual_pointer_t ptr) {
     if (this->count() == 0) {
       throw std::out_of_range("There are no pointers allocated");
     }
 #if VIRTUAL_PTR_VERBOSE
     std::cout << "Searching for: " << static_cast<long>(ptr) << std::endl;
-    for (auto& n : pMap) {
-      std::cout << static_cast<long>(n.first) 
-                                    << " { " << n.second.first.get_impl().get() 
-                                    << ", " << n.second.second 
+    for (auto& n : m_pointerMap) {
+      std::cout << static_cast<long>(n.first)
+                                    << " { " << n.second._b.get_impl().get()
+                                    << ", " << n.second._free
                                     << " }" << std::endl;
     }
 #endif  // VIRTUAL_PTR_VERBOSE
@@ -232,16 +236,16 @@ class PointerMapper {
   /* get_buffer.
    * Returns a buffer from the map using the pointer address
    */
-  buffer_t get_buffer(virtual_pointer_t ptr) {
+  buffer_t get_buffer(const virtual_pointer_t ptr) {
     return get_node(ptr)->second._b;
   }
 
   /*
    * Returns the offset from the base address of this pointer.
    */
-  inline off_t get_offset(virtual_pointer_t ptr) {
+  inline off_t get_offset(const virtual_pointer_t ptr) {
     // The previous element to the lower bound is the node that
-    // holds this memory address   
+    // holds this memory address
     return (ptr - get_node(ptr)->first);
   }
 
@@ -270,11 +274,18 @@ class PointerMapper {
    */
   virtual_pointer_t add_pointer(buffer_t &&b) {
     virtual_pointer_t retVal = nullptr;
-    const auto& bufSize = b.get_count();
+    size_t bufSize = b.get_count();
     pMapNode_t p{ b, bufSize, false };
     // If this is the first pointer:
     if (m_pointerMap.empty())  {
       virtual_pointer_t initialVal{1};
+      #if VIRTUAL_PTR_VERBOSE
+          std::cout << "Adding pointer " << static_cast<long>(initialVal)
+                    << " COUNT " << p._b.get_count()
+                    << " Size: " << p._b.get_size()
+                    << " Buffer impl: " << p._b.get_impl().get()
+                    << std::endl;
+      #endif  // VIRTUAL_PTR_VERBOSE
       m_pointerMap.emplace(initialVal, p);
       return initialVal;
     }
@@ -298,6 +309,12 @@ class PointerMapper {
       retVal = lastElemIter->first + lastSize;
       m_pointerMap.emplace(retVal, p);
     }
+    #if VIRTUAL_PTR_VERBOSE
+        std::cout << "Adding pointer " << std::hex << static_cast<long>(retVal) << std::dec
+                  << " Size: " << bufSize
+                  << " Buffer impl: " << m_pointerMap.rbegin()->second._b.get_impl().get()
+                  << std::endl;
+    #endif  // VIRTUAL_PTR_VERBOSE
     return retVal;
   }
 
@@ -306,7 +323,7 @@ class PointerMapper {
    * Currently we dont re-cover the gaps in the virtual address
    * space that we have freed.
    */
-  void remove_pointer(virtual_pointer_t ptr) {
+  void remove_pointer(const virtual_pointer_t ptr) {
     auto node = this->get_node(ptr);
 
     // If node is the last one, nothing to do, 
@@ -330,6 +347,16 @@ class PointerMapper {
       node->second._free = true;
       m_freeList.emplace(node);
     }
+#if VIRTUAL_PTR_VERBOSE
+    std::cout << "New list after removing: " << static_cast<long>(ptr) << std::endl;
+    for (auto& n : m_pointerMap) {
+      std::cout << static_cast<long>(n.first)
+        << " { " << n.second._b.get_impl().get()
+        << ", " << ((n.second._free)?"Freed":"Usable")
+        << ", " << n.second._b.get_count()
+        << " }" << std::endl;
+    }
+#endif  // VIRTUAL_PTR_VERBOSE
   }
 
   /* count.
@@ -338,9 +365,9 @@ class PointerMapper {
    */
   size_t count() const { 
     if (!m_pointerMap.empty()) {
-#if VERBOSE
-      std::cout << " Map size " << m_pointerMap.size() 
-                                << m_freeList.size() 
+#if VIRTUAL_PTR_VERBOSE
+      std::cout << " Map size " << m_pointerMap.size() << " "
+                                << m_freeList.size()
                                 << std::endl;
 #endif  // VERBOSE
       return (m_pointerMap.size() - m_freeList.size()); 
@@ -359,15 +386,15 @@ class PointerMapper {
    * the size of the allocation on the device.
    */
   struct SortBySize {
-    bool operator()(pointerMap_t::iterator a, 
-                    pointerMap_t::iterator b) {
+    bool operator()(typename pointerMap_t::iterator a, 
+                    typename pointerMap_t::iterator b) {
       return (a->second < b->second);
     }
   };
 
   /* List of free nodes available for re-using
    */
-  std::set<pointerMap_t::iterator, SortBySize> m_freeList;
+  std::set<typename pointerMap_t::iterator, SortBySize> m_freeList;
 };
 
 /**
@@ -377,10 +404,11 @@ class PointerMapper {
  * \param size Size in bytes of the desired allocation
  * \throw cl::sycl::exception if error while creating the buffer
  */
+template<typename PointerMapper>
 inline void *SYCLmalloc(size_t size, PointerMapper& pMap) {
   // Create a generic buffer of the given size
   auto thePointer = pMap.add_pointer(
-      PointerMapper::buffer_t(cl::sycl::range<1>{size}));
+      typename PointerMapper::buffer_t(cl::sycl::range<1>{size}));
   // Store the buffer on the global list
   return static_cast<void *>(thePointer);
 }
@@ -390,9 +418,20 @@ inline void *SYCLmalloc(size_t size, PointerMapper& pMap) {
  * Given a fake-pointer created with the virtual-pointer malloc,
  * destroys the buffer and remove it from the list.
  */
+template<typename PointerMapper>
 inline void SYCLfree(void *ptr, PointerMapper& pMap) { 
   pMap.remove_pointer(ptr); 
 }
+
+/**
+ * Frees all interface to the pointer mapper.
+ * clear all the memory allocared to the SYCL.
+ */
+ template<typename PointerMapper>
+inline void SYCLfreeAll(PointerMapper& pMap) {
+  pMap.clear();
+}
+
 
 }  // codeplay
 
