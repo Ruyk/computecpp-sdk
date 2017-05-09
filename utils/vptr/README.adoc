@@ -5,10 +5,45 @@ This folder contains the implementation of a software-managed virtual
 pointer that facilitates a pointer interface for SYCL buffers.
 This virtual address
 space is non-dereferenceable on the host, but accessors can be obtained
-in the SYCL kernels.
+in the SYCL command groups.
 
 This differs from the legacy_pointer interface in that a contiguous
 virtual address space of size_t bits is created. 
+When allocating a buffer using *SYCLMalloc*, a virtual address in the
+range of 1 to 2<sup>64<sup> is returned. This is, in practise, a number
+that identifies a certain SYCL buffer. 
+The pointer can be offseted, so that positions inside a given buffer 
+can be identified and passed around in higher-level functions.
+
+[source,cpp]
+--
+// Create the Pointer Mapper structure
+PointerMapper<> pMap;
+// Create a SYCL buffer of 10 floats
+float * a = static_cast<float *>(SYCLmalloc(10 * sizeof(float)), pMap);
+// Create a SYCL buffer of 25 integers
+int * b = static_cast<int *>(SYCLmalloc(25 * sizeof(int)), pMap);
+// Create a pointer to the 5th element
+float * c = a + 5; 
+// Retrieve the buffer
+assert(pMap.get_buffer(a) == pMap.get_buffer(c))
+assert(pMap.get_offset(c) == 5)
+
+// Invalid usage: no-dereference on the host
+// float myVal = *c;
+// Valid access on host: Use host-accessor
+{
+  auto syclAcc = pMap.get_buffer(a).get_access<access::mode::read, 
+                                              access::target::host_buffer>();
+  float myVal = syclAcc[0];
+}
+
+// Free the pointers
+SYCLfree(a);
+SYCLfree(b);
+--
+
+
 
 Developers looking for a simple replacement of malloc/free functions should
 use the Legacy Pointer interface.
