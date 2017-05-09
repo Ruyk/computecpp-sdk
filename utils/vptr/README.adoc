@@ -4,15 +4,15 @@ Software Managed Virtual Pointer
 This folder contains the implementation of a software-managed virtual
 pointer that facilitates a pointer interface for SYCL buffers.
 This virtual address
-space is non-dereferenciable on the host, but accessors can be obtained
+space is non-dereferenceable on the host, but accessors can be obtained
 in the SYCL kernels.
 
-This differes from the legacy_pointer interface in that a contiguous
+This differs from the legacy_pointer interface in that a contiguous
 virtual address space of size_t bits is created. 
 
 Developers looking for a simple replacement of malloc/free functions should
 use the Legacy Pointer interface.
-In situations where developers needs complete addressing of the entire
+In situations where developers need complete addressing of the entire
 device memory space, developers should use this software-managed 
 virtual pointer.
 
@@ -49,7 +49,7 @@ The offset can be retrieved using the
 *codeplay::PointerMapper::get_offset* function.
 
 See the tests for basic usage examples.
-Note that the pointer is non-dereferenciable on the host, but host accessors
+Note that the pointer is non-dereferenceable on the host, but host accessors
 can be constructed once the buffer is retrieved.
 
 
