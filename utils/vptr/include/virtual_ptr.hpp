@@ -42,8 +42,7 @@
 #endif  // VIRTUAL_PTR_VERBOSE
 
 namespace codeplay {
- 
- 
+
 using buffer_data_type = uint8_t;
 
 /**
@@ -51,7 +50,8 @@ using buffer_data_type = uint8_t;
  *  Associates fake pointers with buffers.
  *
  */
-template<typename buffer_allocator=cl::sycl::default_allocator<buffer_data_type> >
+template <typename buffer_allocator =
+              cl::sycl::default_allocator<buffer_data_type> >
 class PointerMapper {
  public:
   /* pointer information definitions
@@ -60,7 +60,7 @@ class PointerMapper {
 
   using base_ptr_t = uintptr_t;
 
-  /* Fake Pointers are implemented using an ADDRESS_BIT 
+  /* Fake Pointers are implemented using an ADDRESS_BIT
    * number
    * |================================================|
    * |               POINTER ADDRESS                  |
@@ -86,24 +86,22 @@ class PointerMapper {
      * Add a certain value to the pointer to create a
      * new pointer to that offset
      */
-    virtual_pointer_t operator+(size_t off) {
-      return m_contents + off;
-    }
+    virtual_pointer_t operator+(size_t off) { return m_contents + off; }
 
     /**
      * Numerical order for sorting pointers in containers.
      */
     inline bool operator<(virtual_pointer_t rhs) const {
-      return (reinterpret_cast<base_ptr_t>(m_contents) 
-              < reinterpret_cast<base_ptr_t>(rhs.m_contents));
+      return (reinterpret_cast<base_ptr_t>(m_contents) <
+              reinterpret_cast<base_ptr_t>(rhs.m_contents));
     }
 
     /**
      * Numerical order for sorting pointers in containers
      */
     inline bool operator==(virtual_pointer_t rhs) const {
-      return (reinterpret_cast<base_ptr_t>(m_contents) 
-              == reinterpret_cast<base_ptr_t>(rhs.m_contents));
+      return (reinterpret_cast<base_ptr_t>(m_contents) ==
+              reinterpret_cast<base_ptr_t>(rhs.m_contents));
     }
 
     /**
@@ -138,38 +136,35 @@ class PointerMapper {
    * A pointer is nullptr if the value is of null_virtual_ptr
    */
   static inline bool is_nullptr(virtual_pointer_t ptr) {
-    return (static_cast<void*>(ptr) == nullptr);
+    return (static_cast<void *>(ptr) == nullptr);
   }
-
 
   /* basic type for all buffers
    */
   using buffer_t = cl::sycl::buffer<buffer_data_type, 1, buffer_allocator>;
 
-  /** 
+  /**
    * Node that stores information about a device allocation.
-   * Nodes are sorted by size to organise a free list of nodes 
+   * Nodes are sorted by size to organise a free list of nodes
    * that can be recovered.
    */
   struct pMapNode_t {
-      buffer_t _b;
-      size_t _size;
-      bool _free;
+    buffer_t _b;
+    size_t _size;
+    bool _free;
 
-      pMapNode_t(buffer_t b, size_t size, bool f)
-        : _b{b}, _size{size}, _free{f} { 
-        _b.set_final_data(nullptr); }
+    pMapNode_t(buffer_t b, size_t size, bool f) : _b{b}, _size{size}, _free{f} {
+      _b.set_final_data(nullptr);
+    }
 
-      bool operator<(const pMapNode_t& rhs) {
-        return (_size < rhs._size);
-      }
+    bool operator<(const pMapNode_t &rhs) { return (_size < rhs._size); }
   };
 
   /** Storage of the pointer / buffer tree
    */
   using pointerMap_t = std::map<virtual_pointer_t, pMapNode_t>;
 
-  /** 
+  /**
    * Obtain the insertion point in the pointer map for
    * a pointer of the given size.
    * \param requiredSize Size attemted to reclaim
@@ -188,7 +183,7 @@ class PointerMapper {
           break;
         }
       }
-    } 
+    }
     if (!reuse) {
       retVal = (--m_pointerMap.end());
     }
@@ -212,11 +207,10 @@ class PointerMapper {
     }
 #if VIRTUAL_PTR_VERBOSE
     std::cout << "Searching for: " << static_cast<long>(ptr) << std::endl;
-    for (auto& n : m_pointerMap) {
-      std::cout << static_cast<long>(n.first)
-                                    << " { " << n.second._b.get_impl().get()
-                                    << ", " << n.second._free
-                                    << " }" << std::endl;
+    for (auto &n : m_pointerMap) {
+      std::cout << static_cast<long>(n.first) << " { "
+                << n.second._b.get_impl().get() << ", " << n.second._free
+                << " }" << std::endl;
     }
 #endif  // VIRTUAL_PTR_VERBOSE
     // The previous element to the lower bound is the node that
@@ -252,8 +246,7 @@ class PointerMapper {
   /**
    * Constructs the PointerMapper structure.
    */
-  PointerMapper()
-      : m_pointerMap{}, m_freeList{} {};
+  PointerMapper() : m_pointerMap{}, m_freeList{} {};
 
   /**
    * PointerMapper cannot be copied or moved
@@ -263,9 +256,9 @@ class PointerMapper {
   /**
   *	empty the pointer list
   */
-  inline void clear() { 
+  inline void clear() {
     m_freeList.clear();
-    m_pointerMap.clear(); 
+    m_pointerMap.clear();
   }
 
   /* add_pointer.
@@ -275,17 +268,15 @@ class PointerMapper {
   virtual_pointer_t add_pointer(buffer_t &&b) {
     virtual_pointer_t retVal = nullptr;
     size_t bufSize = b.get_count();
-    pMapNode_t p{ b, bufSize, false };
+    pMapNode_t p{b, bufSize, false};
     // If this is the first pointer:
-    if (m_pointerMap.empty())  {
+    if (m_pointerMap.empty()) {
       virtual_pointer_t initialVal{1};
-      #if VIRTUAL_PTR_VERBOSE
-          std::cout << "Adding pointer " << static_cast<long>(initialVal)
-                    << " COUNT " << p._b.get_count()
-                    << " Size: " << p._b.get_size()
-                    << " Buffer impl: " << p._b.get_impl().get()
-                    << std::endl;
-      #endif  // VIRTUAL_PTR_VERBOSE
+#if VIRTUAL_PTR_VERBOSE
+      std::cout << "Adding pointer " << static_cast<long>(initialVal)
+                << " COUNT " << p._b.get_count() << " Size: " << p._b.get_size()
+                << " Buffer impl: " << p._b.get_impl().get() << std::endl;
+#endif  // VIRTUAL_PTR_VERBOSE
       m_pointerMap.emplace(initialVal, p);
       return initialVal;
     }
@@ -297,7 +288,7 @@ class PointerMapper {
       lastElemIter->second._b = b;
       // Note: We set the node as not freed here, once the
       // new buffer is assigned.
-      // However, we remove it from the free list in the 
+      // However, we remove it from the free list in the
       // get_insertion_point function.
       // If an exception happens in between the two, the
       // node will be not freed, but will be unreachable from
@@ -309,12 +300,11 @@ class PointerMapper {
       retVal = lastElemIter->first + lastSize;
       m_pointerMap.emplace(retVal, p);
     }
-    #if VIRTUAL_PTR_VERBOSE
-        std::cout << "Adding pointer " << std::hex << static_cast<long>(retVal) << std::dec
-                  << " Size: " << bufSize
-                  << " Buffer impl: " << m_pointerMap.rbegin()->second._b.get_impl().get()
-                  << std::endl;
-    #endif  // VIRTUAL_PTR_VERBOSE
+#if VIRTUAL_PTR_VERBOSE
+    std::cout << "Adding pointer " << std::hex << static_cast<long>(retVal)
+              << std::dec << " Size: " << bufSize << " Buffer impl: "
+              << m_pointerMap.rbegin()->second._b.get_impl().get() << std::endl;
+#endif  // VIRTUAL_PTR_VERBOSE
     return retVal;
   }
 
@@ -326,7 +316,7 @@ class PointerMapper {
   void remove_pointer(const virtual_pointer_t ptr) {
     auto node = this->get_node(ptr);
 
-    // If node is the last one, nothing to do, 
+    // If node is the last one, nothing to do,
     // simply remove and try to recover space
     // if there are various consecutive free blocks
     // at the end.
@@ -348,13 +338,13 @@ class PointerMapper {
       m_freeList.emplace(node);
     }
 #if VIRTUAL_PTR_VERBOSE
-    std::cout << "New list after removing: " << static_cast<long>(ptr) << std::endl;
-    for (auto& n : m_pointerMap) {
-      std::cout << static_cast<long>(n.first)
-        << " { " << n.second._b.get_impl().get()
-        << ", " << ((n.second._free)?"Freed":"Usable")
-        << ", " << n.second._b.get_count()
-        << " }" << std::endl;
+    std::cout << "New list after removing: " << static_cast<long>(ptr)
+              << std::endl;
+    for (auto &n : m_pointerMap) {
+      std::cout << static_cast<long>(n.first) << " { "
+                << n.second._b.get_impl().get() << ", "
+                << ((n.second._free) ? "Freed" : "Usable") << ", "
+                << n.second._b.get_count() << " }" << std::endl;
     }
 #endif  // VIRTUAL_PTR_VERBOSE
   }
@@ -363,14 +353,13 @@ class PointerMapper {
    * Return the number of active pointers (i.e, pointers that
    * have been malloc but not freed).
    */
-  size_t count() const { 
+  size_t count() const {
     if (!m_pointerMap.empty()) {
 #if VIRTUAL_PTR_VERBOSE
       std::cout << " Map size " << m_pointerMap.size() << " "
-                                << m_freeList.size()
-                                << std::endl;
+                << m_freeList.size() << std::endl;
 #endif  // VERBOSE
-      return (m_pointerMap.size() - m_freeList.size()); 
+      return (m_pointerMap.size() - m_freeList.size());
     } else {
       return 0;
     }
@@ -381,12 +370,12 @@ class PointerMapper {
     */
   pointerMap_t m_pointerMap;
 
-  /** 
-   * Compare two iterators to pointer map entries according to 
+  /**
+   * Compare two iterators to pointer map entries according to
    * the size of the allocation on the device.
    */
   struct SortBySize {
-    bool operator()(typename pointerMap_t::iterator a, 
+    bool operator()(typename pointerMap_t::iterator a,
                     typename pointerMap_t::iterator b) {
       return (a->second < b->second);
     }
@@ -404,8 +393,8 @@ class PointerMapper {
  * \param size Size in bytes of the desired allocation
  * \throw cl::sycl::exception if error while creating the buffer
  */
-template<typename PointerMapper>
-inline void *SYCLmalloc(size_t size, PointerMapper& pMap) {
+template <typename PointerMapper>
+inline void *SYCLmalloc(size_t size, PointerMapper &pMap) {
   // Create a generic buffer of the given size
   auto thePointer = pMap.add_pointer(
       typename PointerMapper::buffer_t(cl::sycl::range<1>{size}));
@@ -418,21 +407,18 @@ inline void *SYCLmalloc(size_t size, PointerMapper& pMap) {
  * Given a fake-pointer created with the virtual-pointer malloc,
  * destroys the buffer and remove it from the list.
  */
-template<typename PointerMapper>
-inline void SYCLfree(void *ptr, PointerMapper& pMap) { 
-  pMap.remove_pointer(ptr); 
+template <typename PointerMapper>
+inline void SYCLfree(void *ptr, PointerMapper &pMap) {
+  pMap.remove_pointer(ptr);
 }
 
 /**
  * Frees all interface to the pointer mapper.
  * clear all the memory allocared to the SYCL.
  */
- template<typename PointerMapper>
-inline void SYCLfreeAll(PointerMapper& pMap) {
+template <typename PointerMapper>
+inline void SYCLfreeAll(PointerMapper &pMap) {
   pMap.clear();
 }
 
-
 }  // codeplay
-
-

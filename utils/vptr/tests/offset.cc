@@ -34,8 +34,8 @@
 #include "pointer_alias.hpp"
 
 using sycl_acc_target = cl::sycl::access::target;
-const  sycl_acc_target sycl_acc_host = sycl_acc_target::host_buffer;
-const  sycl_acc_target sycl_acc_buffer = sycl_acc_target::global_buffer;
+const sycl_acc_target sycl_acc_host = sycl_acc_target::host_buffer;
+const sycl_acc_target sycl_acc_buffer = sycl_acc_target::global_buffer;
 
 using sycl_acc_mode = cl::sycl::access::mode;
 const sycl_acc_mode sycl_acc_rw = sycl_acc_mode::read_write;
@@ -44,11 +44,9 @@ using namespace codeplay;
 
 using buffer_t = PointerMapper<>::buffer_t;
 
-
 struct kernel {
-  using acc_type = 
-            cl::sycl::accessor<codeplay::buffer_data_type,
-                                1, sycl_acc_rw, sycl_acc_buffer>;
+  using acc_type = cl::sycl::accessor<codeplay::buffer_data_type, 1,
+                                      sycl_acc_rw, sycl_acc_buffer>;
   acc_type accB_;
   int i_;
   int j_;
@@ -56,11 +54,11 @@ struct kernel {
   int offset_;
 
   kernel(acc_type accB, int i, int j, int SIZE, int offset)
-    : accB_(accB), i_(i), j_(j), SIZE_(SIZE), offset_(offset) { };
+      : accB_(accB), i_(i), j_(j), SIZE_(SIZE), offset_(offset){};
 
   void operator()() {
     auto float_off = offset_ / sizeof(float);
-    float * ptr = reinterpret_cast<float *>(&*accB_.get_pointer());
+    float *ptr = reinterpret_cast<float *>(&*accB_.get_pointer());
     ptr[float_off] = i_ * SIZE_ + j_;
   };
 };
@@ -69,8 +67,7 @@ TEST(offset, basic_test) {
   PointerMapper<> pMap;
   {
     ASSERT_EQ(pMap.count(), 0u);
-    float * myPtr = static_cast<float *>(
-                        SYCLmalloc(100 * sizeof(float), pMap));
+    float *myPtr = static_cast<float *>(SYCLmalloc(100 * sizeof(float), pMap));
 
     ASSERT_NE(myPtr, nullptr);
 
@@ -83,15 +80,13 @@ TEST(offset, basic_test) {
     buffer_t b = pMap.get_buffer(myPtr);
 
     size_t offset = pMap.get_offset(myPtr);
-    ASSERT_EQ(offset, 3*sizeof(float));
-    
+    ASSERT_EQ(offset, 3 * sizeof(float));
+
     cl::sycl::queue q;
-    q.submit([&b,offset](cl::sycl::handler& h) {
-        auto accB = b.get_access<sycl_acc_rw>(h);
-        h.single_task<class foo1>([=]() {
-              accB[offset] = 1.0f;
-            });
-        });
+    q.submit([&b, offset](cl::sycl::handler &h) {
+      auto accB = b.get_access<sycl_acc_rw>(h);
+      h.single_task<class foo1>([=]() { accB[offset] = 1.0f; });
+    });
 
     // Only way of reading the value is using a host accessor
     {
@@ -103,25 +98,24 @@ TEST(offset, basic_test) {
   }
 }
 
-
 TEST(offset, 2d_indexing) {
   PointerMapper<> pMap;
   {
     const unsigned SIZE = 8;
     ASSERT_EQ(pMap.count(), 0u);
-    float * myPtr = static_cast<float *>(
-                        SYCLmalloc(SIZE * SIZE * sizeof(float), pMap));
+    float *myPtr =
+        static_cast<float *>(SYCLmalloc(SIZE * SIZE * sizeof(float), pMap));
 
     ASSERT_NE(myPtr, nullptr);
 
     ASSERT_FALSE(PointerMapper<>::is_nullptr(myPtr));
 
     ASSERT_EQ(pMap.count(), 1u);
-    
+
     cl::sycl::queue q;
 
-    float * actPos = myPtr;
-    for (unsigned i = 0; i < SIZE; i++) {   
+    float *actPos = myPtr;
+    for (unsigned i = 0; i < SIZE; i++) {
       for (unsigned j = 0; j < SIZE; j++) {
         // Obtain the buffer
         // Note that the scope of this buffer ends when the buffer
@@ -131,22 +125,22 @@ TEST(offset, 2d_indexing) {
 
         size_t offset = pMap.get_offset(actPos);
         ASSERT_EQ(offset, (i * SIZE + j) * sizeof(float));
-        
-        q.submit([b, offset, i, j, SIZE](cl::sycl::handler& h) mutable {
-            auto accB = b.get_access<sycl_acc_rw>(h);
-            h.single_task(kernel(accB, i, j, SIZE, offset));
+
+        q.submit([b, offset, i, j, SIZE](cl::sycl::handler &h) mutable {
+          auto accB = b.get_access<sycl_acc_rw>(h);
+          h.single_task(kernel(accB, i, j, SIZE, offset));
         });
         // We move to the next ptr
         actPos++;
       }  // for int j
-    }  // for int i
+    }    // for int i
 
     // Only way of reading the value is using a host accessor
     {
       buffer_t b = pMap.get_buffer(myPtr);
-      ASSERT_EQ(b.get_size(), SIZE*SIZE*sizeof(float));
+      ASSERT_EQ(b.get_size(), SIZE * SIZE * sizeof(float));
       auto hostAcc = b.get_access<sycl_acc_rw, sycl_acc_host>();
-      float * fPtr = reinterpret_cast<float *>(&*hostAcc.get_pointer());
+      float *fPtr = reinterpret_cast<float *>(&*hostAcc.get_pointer());
       for (unsigned i = 0; i < SIZE; i++) {
         for (unsigned j = 0; j < SIZE; j++) {
           ASSERT_EQ(fPtr[i * SIZE + j], i * SIZE + j);
