@@ -50,8 +50,8 @@ using buffer_data_type = uint8_t;
  *  Associates fake pointers with buffers.
  *
  */
-template <typename buffer_allocator =
-              cl::sycl::default_allocator<buffer_data_type> >
+//template <typename buffer_allocator =
+//              cl::sycl::default_allocator<buffer_data_type> >
 class PointerMapper {
  public:
   /* pointer information definitions
@@ -141,7 +141,8 @@ class PointerMapper {
 
   /* basic type for all buffers
    */
-  using buffer_t = cl::sycl::buffer<buffer_data_type, 1, buffer_allocator>;
+  //using buffer_t = cl::sycl::buffer<buffer_data_type, 1, buffer_allocator>;
+  using buffer_t = cl::sycl::buffer_mem;
 
   /**
    * Node that stores information about a device allocation.
@@ -393,11 +394,13 @@ class PointerMapper {
  * \param size Size in bytes of the desired allocation
  * \throw cl::sycl::exception if error while creating the buffer
  */
-template <typename PointerMapper>
+template <typename buffer_allocator =
+                   cl::sycl::default_allocator<buffer_data_type> >
 inline void *SYCLmalloc(size_t size, PointerMapper &pMap) {
   // Create a generic buffer of the given size
+  using buffer_t = cl::sycl::buffer<buffer_data_type, 1, buffer_allocator>;
   auto thePointer = pMap.add_pointer(
-      typename PointerMapper::buffer_t(cl::sycl::range<1>{size}));
+      buffer_t(cl::sycl::range<1>{size}));
   // Store the buffer on the global list
   return static_cast<void *>(thePointer);
 }

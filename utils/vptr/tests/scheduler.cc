@@ -45,26 +45,26 @@ TEST(pointer_mapper, basic_test) {
 
   //Ensure that the pointer mapper in the runtime is null
   auto runtime_pmppr_null = cl::sycl::detail::get_pointer_mapper();
-  ASSERT_TRUE(PointerMapper<>::is_nullptr(runtime_pmppr_null));
+  ASSERT_TRUE(PointerMapper::is_nullptr(runtime_pmppr_null));
 
   //Create a non-null pointer mapper
-  PointerMapper<> pMap;
+  PointerMapper pMap;
 
   ASSERT_EQ(pMap.count(), 0u);
 
   void *myPtr = SYCLmalloc(100 * sizeof(float), pMap);
   ASSERT_NE(myPtr, nullptr);
 
-  ASSERT_FALSE(PointerMapper<>::is_nullptr(myPtr));
+  ASSERT_FALSE(PointerMapper::is_nullptr(myPtr));
 
-  ASSERT_TRUE(PointerMapper<>::is_nullptr(nullptr));
+  ASSERT_TRUE(PointerMapper::is_nullptr(nullptr));
 
   ASSERT_EQ(pMap.count(), 1u);
 
   //Regiester it in the runtime
-  //cl::sycl::detail::register_pointer_mapper(pMap);
+  cl::sycl::detail::register_pointer_mapper(&pMap);
 
   //Ensure that the pointer mapper in the runtime now isn't null
   auto runtime_pmppr = cl::sycl::detail::get_pointer_mapper();
-  ASSERT_FALSE(PointerMapper<>::is_nullptr(runtime_pmppr));
+  ASSERT_FALSE(PointerMapper::is_nullptr(runtime_pmppr));
 }
