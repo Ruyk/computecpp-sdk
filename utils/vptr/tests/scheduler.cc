@@ -42,12 +42,11 @@ const sycl_acc_mode sycl_acc_rw = sycl_acc_mode::read_write;
 using namespace codeplay;
 
 TEST(pointer_mapper, basic_test) {
-
-  //Ensure that the pointer mapper in the runtime is null
+  // Ensure that the pointer mapper in the runtime is null
   auto runtime_pmppr_null = cl::sycl::detail::get_pointer_mapper();
   ASSERT_TRUE(PointerMapper::is_nullptr(runtime_pmppr_null));
 
-  //Create a non-null pointer mapper
+  // Create a non-null pointer mapper
   PointerMapper pMap;
 
   ASSERT_EQ(pMap.count(), 0u);
@@ -61,10 +60,10 @@ TEST(pointer_mapper, basic_test) {
 
   ASSERT_EQ(pMap.count(), 1u);
 
-  //Regiester it in the runtime
+  // Regiester it in the runtime
   cl::sycl::detail::register_pointer_mapper(&pMap);
 
-  //Ensure that the pointer mapper in the runtime now isn't null
+  // Ensure that the pointer mapper in the runtime now isn't null
   auto runtime_pmppr = cl::sycl::detail::get_pointer_mapper();
   ASSERT_FALSE(PointerMapper::is_nullptr(runtime_pmppr));
 }

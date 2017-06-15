@@ -41,7 +41,10 @@ const sycl_acc_mode sycl_acc_rw = sycl_acc_mode::read_write;
 
 using namespace codeplay;
 
-using buffer_t = PointerMapper::buffer_t;
+// using buffer_t = PointerMapper::buffer_t;
+using buffer_t =
+    cl::sycl::buffer<buffer_data_type, 1,
+                     cl::sycl::default_allocator<buffer_data_type>>;
 
 TEST(pointer_mapper, basic_test) {
   PointerMapper pMap;
@@ -56,8 +59,7 @@ TEST(pointer_mapper, basic_test) {
 
     ASSERT_EQ(pMap.count(), 1u);
 
-    /* TODO(Vanya): uncomment this
-    buffer_t b = pMap.get_buffer(myPtr);
+    auto b = pMap.get_buffer(myPtr);
 
     cl::sycl::queue q;
     q.submit([&b](cl::sycl::handler &h) {
@@ -70,7 +72,6 @@ TEST(pointer_mapper, basic_test) {
       auto hostAcc = b.get_access<sycl_acc_rw, sycl_acc_host>();
       ASSERT_EQ(hostAcc[0], 1.0f);
     }
-    */
     SYCLfree(myPtr, pMap);
     ASSERT_EQ(pMap.count(), 0u);
   }
@@ -94,7 +95,6 @@ TEST(pointer_mapper, two_buffers) {
     // Obtain the buffer
     // Note that the scope of this buffer ends when the buffer
     // is freed
-    /* TODO(Vanya): Uncomment those
     try {
       buffer_t b2 = pMap.get_buffer(ptrB);
       buffer_t b1 = pMap.get_buffer(ptrA);
@@ -129,7 +129,6 @@ TEST(pointer_mapper, two_buffers) {
     } catch (std::out_of_range e) {
       FAIL();
     }
-    */
 
     ASSERT_EQ(pMap.count(), 2u);
     SYCLfree(ptrA, pMap);
