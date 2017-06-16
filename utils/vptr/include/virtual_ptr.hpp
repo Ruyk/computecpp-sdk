@@ -44,15 +44,11 @@
 namespace codeplay {
 
 using buffer_data_type = uint8_t;
-using default_buffer_allocator = cl::sycl::default_allocator<buffer_data_type>;
-
 /**
  * PointerMapper
  *  Associates fake pointers with buffers.
  *
  */
-// template <typename buffer_allocator =
-//              cl::sycl::default_allocator<buffer_data_type> >
 class PointerMapper {
  public:
   /* pointer information definitions
@@ -142,7 +138,6 @@ class PointerMapper {
 
   /* basic type for all buffers
    */
-  // using buffer_t = cl::sycl::buffer<buffer_data_type, 1, buffer_allocator>;
   using buffer_t = cl::sycl::buffer_mem;
 
   /**
@@ -232,13 +227,12 @@ class PointerMapper {
   /* get_buffer.
    * Returns a pointer to a buffer from the map using the pointer address
    */
-  template <typename buffer_allocator = default_buffer_allocator>
-  cl::sycl::buffer<buffer_data_type, 1, buffer_allocator> get_buffer(
-      const virtual_pointer_t ptr) {
-    using buffer_t = cl::sycl::buffer<buffer_data_type, 1, buffer_allocator>;
-    auto buf = &get_node(ptr)->second._b;
-    buffer_t *b = static_cast<buffer_t *>(buf);
-    return *b;
+  cl::sycl::buffer<buffer_data_type, 1, cl::sycl::detail::base_allocator>
+  get_buffer(const virtual_pointer_t ptr) {
+    using buffer_t =
+        cl::sycl::buffer<buffer_data_type, 1, cl::sycl::detail::base_allocator>;
+    buffer_t buf(*(static_cast<buffer_t *>(&get_node(ptr)->second._b)));
+    return buf;
   }
 
   /*

@@ -41,11 +41,6 @@ const sycl_acc_mode sycl_acc_rw = sycl_acc_mode::read_write;
 
 using namespace codeplay;
 
-// using buffer_t = PointerMapper::buffer_t;
-using buffer_t =
-    cl::sycl::buffer<buffer_data_type, 1,
-                     cl::sycl::default_allocator<buffer_data_type>>;
-
 TEST(pointer_mapper, basic_test) {
   PointerMapper pMap;
   {
@@ -96,8 +91,8 @@ TEST(pointer_mapper, two_buffers) {
     // Note that the scope of this buffer ends when the buffer
     // is freed
     try {
-      buffer_t b2 = pMap.get_buffer(ptrB);
-      buffer_t b1 = pMap.get_buffer(ptrA);
+      auto b2 = pMap.get_buffer(ptrB);
+      auto b1 = pMap.get_buffer(ptrA);
 
 #ifdef __COMPUTECPP__
       ASSERT_NE(b2.get_impl().get(), b1.get_impl().get());
