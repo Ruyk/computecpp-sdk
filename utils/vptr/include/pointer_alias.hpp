@@ -43,12 +43,12 @@ namespace codeplay {
 template<typename T, typename AccessorT>
 cl::sycl::global_ptr<T> get_device_ptr_as(AccessorT& acc) {
      return reinterpret_cast<typename cl::sycl::global_ptr<T>::pointer_t>
-              ((&(*acc.get_pointer())));
+              (*acc.get_pointer());
 }
 
 template<typename T, typename AccessorT>
 T * get_host_ptr_as(AccessorT& acc) {
-     return reinterpret_cast<T *>((&(*acc.get_pointer())));
+     return reinterpret_cast<T *>(acc.get_pointer());
 }
 
 }  // codeplay
