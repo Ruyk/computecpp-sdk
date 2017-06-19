@@ -44,14 +44,11 @@
 namespace codeplay {
 
 using buffer_data_type = uint8_t;
-
 /**
  * PointerMapper
  *  Associates fake pointers with buffers.
  *
  */
-template <typename buffer_allocator =
-              cl::sycl::default_allocator<buffer_data_type> >
 class PointerMapper {
  public:
   /* pointer information definitions
@@ -141,7 +138,7 @@ class PointerMapper {
 
   /* basic type for all buffers
    */
-  using buffer_t = cl::sycl::buffer<buffer_data_type, 1, buffer_allocator>;
+  using buffer_t = cl::sycl::buffer_mem;
 
   /**
    * Node that stores information about a device allocation.
@@ -230,8 +227,17 @@ class PointerMapper {
   /* get_buffer.
    * Returns a buffer from the map using the pointer address
    */
-  buffer_t get_buffer(const virtual_pointer_t ptr) {
-    return get_node(ptr)->second._b;
+  cl::sycl::buffer<buffer_data_type, 1, cl::sycl::detail::base_allocator>
+  get_buffer(const virtual_pointer_t ptr) {
+    using buffer_t =
+        cl::sycl::buffer<buffer_data_type, 1, cl::sycl::detail::base_allocator>;
+
+    // get_node() returns a `buffer_mem`, so we need to cast it to a `buffer<>`.
+    // We can do this without the `buffer_mem` being a pointer, as we 
+    // only declare member variables in the base class (`buffer_mem`) and not in 
+    // the child class (`buffer<>).
+    buffer_t buf(*(static_cast<buffer_t *>(&get_node(ptr)->second._b)));
+    return buf;
   }
 
   /*
@@ -393,11 +399,12 @@ class PointerMapper {
  * \param size Size in bytes of the desired allocation
  * \throw cl::sycl::exception if error while creating the buffer
  */
-template <typename PointerMapper>
+template <
+    typename buffer_allocator = cl::sycl::default_allocator<buffer_data_type> >
 inline void *SYCLmalloc(size_t size, PointerMapper &pMap) {
   // Create a generic buffer of the given size
-  auto thePointer = pMap.add_pointer(
-      typename PointerMapper::buffer_t(cl::sycl::range<1>{size}));
+  using buffer_t = cl::sycl::buffer<buffer_data_type, 1, buffer_allocator>;
+  auto thePointer = pMap.add_pointer(buffer_t(cl::sycl::range<1>{size}));
   // Store the buffer on the global list
   return static_cast<void *>(thePointer);
 }

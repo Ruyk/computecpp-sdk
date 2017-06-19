@@ -42,7 +42,7 @@ const sycl_acc_mode sycl_acc_rw = sycl_acc_mode::read_write;
 
 using namespace codeplay;
 
-using buffer_t = PointerMapper<>::buffer_t;
+using buffer_t = PointerMapper::buffer_t;
 
 struct kernel {
   using acc_type = cl::sycl::accessor<codeplay::buffer_data_type, 1,
@@ -64,20 +64,20 @@ struct kernel {
 };
 
 TEST(offset, basic_test) {
-  PointerMapper<> pMap;
+  PointerMapper pMap;
   {
     ASSERT_EQ(pMap.count(), 0u);
     float *myPtr = static_cast<float *>(SYCLmalloc(100 * sizeof(float), pMap));
 
     ASSERT_NE(myPtr, nullptr);
 
-    ASSERT_FALSE(PointerMapper<>::is_nullptr(myPtr));
+    ASSERT_FALSE(PointerMapper::is_nullptr(myPtr));
 
     ASSERT_EQ(pMap.count(), 1u);
 
     myPtr += 3;
 
-    buffer_t b = pMap.get_buffer(myPtr);
+    auto b = pMap.get_buffer(myPtr);
 
     size_t offset = pMap.get_offset(myPtr);
     ASSERT_EQ(offset, 3 * sizeof(float));
@@ -93,13 +93,14 @@ TEST(offset, basic_test) {
       auto hostAcc = b.get_access<sycl_acc_rw, sycl_acc_host>();
       ASSERT_EQ(hostAcc[offset], 1.0f);
     }
+
     SYCLfree(myPtr, pMap);
     ASSERT_EQ(pMap.count(), 0u);
   }
 }
 
 TEST(offset, 2d_indexing) {
-  PointerMapper<> pMap;
+  PointerMapper pMap;
   {
     const unsigned SIZE = 8;
     ASSERT_EQ(pMap.count(), 0u);
@@ -108,7 +109,7 @@ TEST(offset, 2d_indexing) {
 
     ASSERT_NE(myPtr, nullptr);
 
-    ASSERT_FALSE(PointerMapper<>::is_nullptr(myPtr));
+    ASSERT_FALSE(PointerMapper::is_nullptr(myPtr));
 
     ASSERT_EQ(pMap.count(), 1u);
 
@@ -121,7 +122,7 @@ TEST(offset, 2d_indexing) {
         // Note that the scope of this buffer ends when the buffer
         // is freed
         //
-        buffer_t b = pMap.get_buffer(actPos);
+        auto b = pMap.get_buffer(actPos);
 
         size_t offset = pMap.get_offset(actPos);
         ASSERT_EQ(offset, (i * SIZE + j) * sizeof(float));
@@ -130,6 +131,7 @@ TEST(offset, 2d_indexing) {
           auto accB = b.get_access<sycl_acc_rw>(h);
           h.single_task(kernel(accB, i, j, SIZE, offset));
         });
+
         // We move to the next ptr
         actPos++;
       }  // for int j
@@ -137,7 +139,7 @@ TEST(offset, 2d_indexing) {
 
     // Only way of reading the value is using a host accessor
     {
-      buffer_t b = pMap.get_buffer(myPtr);
+      auto b = pMap.get_buffer(myPtr);
       ASSERT_EQ(b.get_size(), SIZE * SIZE * sizeof(float));
       auto hostAcc = b.get_access<sycl_acc_rw, sycl_acc_host>();
       float *fPtr = reinterpret_cast<float *>(&*hostAcc.get_pointer());

@@ -41,22 +41,20 @@ const sycl_acc_mode sycl_acc_rw = sycl_acc_mode::read_write;
 
 using namespace codeplay;
 
-using buffer_t = PointerMapper<>::buffer_t;
-
 TEST(pointer_mapper, basic_test) {
-  PointerMapper<> pMap;
+  PointerMapper pMap;
   {
     ASSERT_EQ(pMap.count(), 0u);
     void *myPtr = SYCLmalloc(100 * sizeof(float), pMap);
     ASSERT_NE(myPtr, nullptr);
 
-    ASSERT_FALSE(PointerMapper<>::is_nullptr(myPtr));
+    ASSERT_FALSE(PointerMapper::is_nullptr(myPtr));
 
-    ASSERT_TRUE(PointerMapper<>::is_nullptr(nullptr));
+    ASSERT_TRUE(PointerMapper::is_nullptr(nullptr));
 
     ASSERT_EQ(pMap.count(), 1u);
 
-    buffer_t b = pMap.get_buffer(myPtr);
+    auto b = pMap.get_buffer(myPtr);
 
     cl::sycl::queue q;
     q.submit([&b](cl::sycl::handler &h) {
@@ -75,26 +73,26 @@ TEST(pointer_mapper, basic_test) {
 }
 
 TEST(pointer_mapper, two_buffers) {
-  PointerMapper<> pMap;
+  PointerMapper pMap;
   {
     ASSERT_EQ(pMap.count(), 0u);
     void *ptrA = SYCLmalloc(100 * sizeof(int), pMap);
     ASSERT_NE(ptrA, nullptr);
-    ASSERT_FALSE(PointerMapper<>::is_nullptr(ptrA));
+    ASSERT_FALSE(PointerMapper::is_nullptr(ptrA));
     ASSERT_EQ(pMap.count(), 1u);
 
     void *ptrB = SYCLmalloc(10 * sizeof(int), pMap);
 
     ASSERT_NE(ptrB, nullptr);
-    ASSERT_FALSE(PointerMapper<>::is_nullptr(ptrA));
+    ASSERT_FALSE(PointerMapper::is_nullptr(ptrA));
     ASSERT_EQ(pMap.count(), 2u);
 
     // Obtain the buffer
     // Note that the scope of this buffer ends when the buffer
     // is freed
     try {
-      buffer_t b2 = pMap.get_buffer(ptrB);
-      buffer_t b1 = pMap.get_buffer(ptrA);
+      auto b2 = pMap.get_buffer(ptrB);
+      auto b1 = pMap.get_buffer(ptrA);
 
 #ifdef __COMPUTECPP__
       ASSERT_NE(b2.get_impl().get(), b1.get_impl().get());
@@ -136,26 +134,26 @@ TEST(pointer_mapper, two_buffers) {
 }
 
 TEST(pointer_mapper, reuse_ptr) {
-  PointerMapper<> pMap;
+  PointerMapper pMap;
   {
     ASSERT_EQ(pMap.count(), 0u);
 
     // First we insert a large buffer
     void *initial = SYCLmalloc(100 * sizeof(int), pMap);
     ASSERT_NE(initial, nullptr);
-    ASSERT_FALSE(PointerMapper<>::is_nullptr(initial));
+    ASSERT_FALSE(PointerMapper::is_nullptr(initial));
     ASSERT_EQ(pMap.count(), 1u);
 
     // Now we insert a small one, that we'll be reused
     void *reused = SYCLmalloc(10 * sizeof(int), pMap);
     ASSERT_NE(reused, nullptr);
-    ASSERT_FALSE(PointerMapper<>::is_nullptr(reused));
+    ASSERT_FALSE(PointerMapper::is_nullptr(reused));
     ASSERT_EQ(pMap.count(), 2u);
 
     // Another large buffer
     void *end = SYCLmalloc(100 * sizeof(int), pMap);
     ASSERT_NE(end, nullptr);
-    ASSERT_FALSE(PointerMapper<>::is_nullptr(end));
+    ASSERT_FALSE(PointerMapper::is_nullptr(end));
     ASSERT_EQ(pMap.count(), 3u);
 
     // We free the intermediate one
@@ -164,14 +162,14 @@ TEST(pointer_mapper, reuse_ptr) {
 
     void *shouldBeTheSame = SYCLmalloc(10 * sizeof(int), pMap);
     ASSERT_NE(shouldBeTheSame, nullptr);
-    ASSERT_FALSE(PointerMapper<>::is_nullptr(shouldBeTheSame));
+    ASSERT_FALSE(PointerMapper::is_nullptr(shouldBeTheSame));
     ASSERT_EQ(pMap.count(), 3u);
     ASSERT_EQ(shouldBeTheSame, reused);
   }
 }
 
 TEST(pointer_mapper, multiple_alloc_free) {
-  PointerMapper<> pMap;
+  PointerMapper pMap;
   size_t numAllocations = (1 << 9);
   size_t maxAllocSize = 1251;
 
