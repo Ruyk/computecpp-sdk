@@ -225,12 +225,17 @@ class PointerMapper {
   }
 
   /* get_buffer.
-   * Returns a pointer to a buffer from the map using the pointer address
+   * Returns a buffer from the map using the pointer address
    */
   cl::sycl::buffer<buffer_data_type, 1, cl::sycl::detail::base_allocator>
   get_buffer(const virtual_pointer_t ptr) {
     using buffer_t =
         cl::sycl::buffer<buffer_data_type, 1, cl::sycl::detail::base_allocator>;
+
+    // get_node() returns a `buffer_mem`, so we need to cast it to a `buffer<>`.
+    // We can do this without the `buffer_mem` being a pointer, as we 
+    // only declare member variables in the base class (`buffer_mem`) and not in 
+    // the child class (`buffer<>).
     buffer_t buf(*(static_cast<buffer_t *>(&get_node(ptr)->second._b)));
     return buf;
   }
