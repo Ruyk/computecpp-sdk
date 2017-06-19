@@ -9,10 +9,10 @@ in the SYCL command groups.
 
 This differs from the legacy_pointer interface in that a contiguous
 virtual address space of sizeof(size_t) bits is created. 
-When allocating a buffer using *SYCLMalloc*, a virtual address in the
+When allocating a buffer using *SYCLmalloc*, a virtual address in the
 range of 1 to 2<sup>sizeof(size_t)<sup> is returned. 
 This is, in practise, a number that identifies a certain SYCL buffer. 
-The pointer can be offseted, so that positions inside a given buffer 
+The pointer can be offset, so that positions inside a given buffer 
 can be identified and passed around in higher-level functions.
 This enables pointer arithmetic on the virtual addresses. 
 From any virtual pointer address, the methods `get_buffer` and 
@@ -26,9 +26,9 @@ PointerMapper pMap;
 // Create a SYCL buffer of 10 floats
 // This pointer is a number that identifies the buffer
 // on the pointer mapper structure
-float * a = static_cast<float *>(SYCLmalloc(10 * sizeof(float)), pMap);
+float * a = static_cast<float *>(SYCLmalloc(10 * sizeof(float), pMap));
 // Create a SYCL buffer of 25 integers
-int * b = static_cast<int *>(SYCLmalloc(25 * sizeof(int)), pMap);
+int * b = static_cast<int *>(SYCLmalloc(25 * sizeof(int), pMap));
 // Create a pointer to the 5th element
 // This simply adds 5 * sizeof(float *) to the base address.
 float * c = a + 5; 
