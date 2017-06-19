@@ -97,6 +97,16 @@ Note that the pointer is non-dereferenceable on the host, but host accessors
 can be constructed once the buffer is retrieved.
 
 
+Experimental ComputeCpp Integration
+-----------------------------------
+
+ComputeCpp versions 0.2.1 and above support integration with the PointerMapper.
+This is an experimental feature at the moment, and not intended for the
+general public usage.
+To enable testing of the experimental interface support, 
+pass COMPUTECPP_INTERFACE=ON to the cmake configration line.
+
+
 Building tests
 --------------
 
