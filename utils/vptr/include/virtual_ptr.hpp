@@ -57,8 +57,8 @@ class PointerMapper {
 
   using base_ptr_t = uintptr_t;
 
-  /* Fake Pointers are implemented using an ADDRESS_BIT
-   * number
+  /* Structure of a virtual pointer
+   *
    * |================================================|
    * |               POINTER ADDRESS                  |
    * |================================================|
@@ -268,7 +268,7 @@ class PointerMapper {
   }
 
   /* add_pointer.
-   * Adds a pointer to the map and returns the fake pointer id.
+   * Adds a pointer to the map and returns the virtual pointer id.
    * Note: Currently we don't re-use existing spaces.
    */
   virtual_pointer_t add_pointer(buffer_t &&b) {
