@@ -32,8 +32,8 @@
 #include <CL/sycl.hpp>
 #include <iostream>
 
-#include <unordered_map>
 #include <queue>
+#include <unordered_map>
 
 #ifndef VIRTUAL_PTR_VERBOSE
 // Show extra information when allocating and de-allocating
@@ -44,6 +44,9 @@
 namespace codeplay {
 
 using buffer_data_type = uint8_t;
+using sycl_acc_target = cl::sycl::access::target;
+using sycl_acc_mode = cl::sycl::access::mode;
+
 /**
  * PointerMapper
  *  Associates fake pointers with buffers.
@@ -233,11 +236,31 @@ class PointerMapper {
         cl::sycl::buffer<buffer_data_type, 1, cl::sycl::detail::base_allocator>;
 
     // get_node() returns a `buffer_mem`, so we need to cast it to a `buffer<>`.
-    // We can do this without the `buffer_mem` being a pointer, as we 
-    // only declare member variables in the base class (`buffer_mem`) and not in 
+    // We can do this without the `buffer_mem` being a pointer, as we
+    // only declare member variables in the base class (`buffer_mem`) and not in
     // the child class (`buffer<>).
     buffer_t buf(*(static_cast<buffer_t *>(&get_node(ptr)->second._b)));
     return buf;
+  }
+
+  /**
+   * TODO(Vanya): Doxygen
+   */
+  template <sycl_acc_mode access_mode,
+            sycl_acc_target access_target = sycl_acc_target::global_buffer>
+  cl::sycl::accessor<buffer_data_type, 1, access_mode, access_target>
+  get_accessor(const virtual_pointer_t ptr) {
+    return get_buffer(ptr).get_access<access_mode, access_target>();
+  }
+
+  /**
+   * TODO(Vanya): Doxygen
+   */
+  template <sycl_acc_mode access_mode,
+            sycl_acc_target access_target = sycl_acc_target::global_buffer>
+  cl::sycl::accessor<buffer_data_type, 1, access_mode, access_target>
+  get_accessor(const virtual_pointer_t ptr, cl::sycl::handler &cgh) {
+    return get_buffer(ptr).get_access<access_mode, access_target>(cgh);
   }
 
   /*
