@@ -51,16 +51,16 @@ add_sycl_to_target(offset  ${CMAKE_CURRENT_BINARY_DIR}
 add_test(OffsetTests offset)
 
 if (COMPUTECPP_INTERFACE)
-  add_executable(scheduler scheduler.cc)
-  set_property(TARGET scheduler PROPERTY CXX_STANDARD 11)
-  target_link_libraries(scheduler PUBLIC ${gtest_BINARY_DIR}/libgtest.a)
-  target_link_libraries(scheduler PUBLIC ${gtest_BINARY_DIR}/libgtest_main.a)
-  target_link_libraries(scheduler PUBLIC pthread)
-  add_dependencies(scheduler gtest_main)
-  add_dependencies(scheduler gtest)
-  add_sycl_to_target(scheduler  ${CMAKE_CURRENT_BINARY_DIR}
-                    ${CMAKE_CURRENT_SOURCE_DIR}/scheduler.cc)
-  add_test(SchedulerTests scheduler)
+  add_executable(runtime runtime.cc)
+  set_property(TARGET runtime PROPERTY CXX_STANDARD 11)
+  target_link_libraries(runtime PUBLIC ${gtest_BINARY_DIR}/libgtest.a)
+  target_link_libraries(runtime PUBLIC ${gtest_BINARY_DIR}/libgtest_main.a)
+  target_link_libraries(runtime PUBLIC pthread)
+  add_dependencies(runtime gtest_main)
+  add_dependencies(runtime gtest)
+  add_sycl_to_target(runtime  ${CMAKE_CURRENT_BINARY_DIR}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/runtime.cc)
+  add_test(RuntimeTests runtime)
 endif()
 
 add_executable(accessor accessor.cc)

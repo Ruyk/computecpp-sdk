@@ -18,10 +18,10 @@
  *
  *  Codeplay's ComputeCpp SDK
  *
- *   basic.cc
+ *   accessor.cc
  *
  *  Description:
- *   Basic tests of the pointer mapper utility header
+ *   Tests for the get_access() method in the pointer mapper
  *
  **************************************************************************/
 
