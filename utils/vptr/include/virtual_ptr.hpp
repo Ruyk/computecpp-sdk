@@ -244,7 +244,10 @@ class PointerMapper {
   }
 
   /**
-   * TODO(Vanya): Doxygen
+   * @brief Returns an accessor to the buffer of the given virtual pointer
+   * @param accessMode
+   * @param accessTarget
+   * @param ptr The virtual pointer
    */
   template <sycl_acc_mode access_mode,
             sycl_acc_target access_target = sycl_acc_target::global_buffer>
@@ -254,7 +257,12 @@ class PointerMapper {
   }
 
   /**
-   * TODO(Vanya): Doxygen
+   * @brief Returns an accessor to the buffer of the given virtual pointer
+   *        in the given command group scope
+   * @param accessMode
+   * @param accessTarget
+   * @param ptr The virtual pointer
+   * @param cgh Reference to the command group scope
    */
   template <sycl_acc_mode access_mode,
             sycl_acc_target access_target = sycl_acc_target::global_buffer>
