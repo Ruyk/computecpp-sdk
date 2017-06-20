@@ -249,7 +249,7 @@ class PointerMapper {
   template <sycl_acc_mode access_mode,
             sycl_acc_target access_target = sycl_acc_target::global_buffer>
   cl::sycl::accessor<buffer_data_type, 1, access_mode, access_target>
-  get_accessor(const virtual_pointer_t ptr) {
+  get_access(const virtual_pointer_t ptr) {
     return get_buffer(ptr).get_access<access_mode, access_target>();
   }
 
@@ -259,7 +259,7 @@ class PointerMapper {
   template <sycl_acc_mode access_mode,
             sycl_acc_target access_target = sycl_acc_target::global_buffer>
   cl::sycl::accessor<buffer_data_type, 1, access_mode, access_target>
-  get_accessor(const virtual_pointer_t ptr, cl::sycl::handler &cgh) {
+  get_access(const virtual_pointer_t ptr, cl::sycl::handler &cgh) {
     return get_buffer(ptr).get_access<access_mode, access_target>(cgh);
   }
 
