@@ -37,8 +37,8 @@
 
 #ifndef VIRTUAL_PTR_VERBOSE
 // Show extra information when allocating and de-allocating
-// #define VIRTUAL_PTR_VERBOSE 1
-#define VIRTUAL_PTR_VERBOSE 0
+#define VIRTUAL_PTR_VERBOSE 1
+//#define VIRTUAL_PTR_VERBOSE 0
 #endif  // VIRTUAL_PTR_VERBOSE
 
 namespace codeplay {
@@ -199,6 +199,9 @@ class PointerMapper {
    * \throws std::out:of_range if the pointer is not found or pMap is empty
    */
   typename pointerMap_t::iterator get_node(const virtual_pointer_t ptr) {
+#if VIRTUAL_PTR_VERBOSE
+    std::cout << "\n::BEGIN: get_node\n\n";
+#endif  // VIRTUAL_PTR_VERBOSE
     if (this->count() == 0) {
       throw std::out_of_range("There are no pointers allocated");
     }
@@ -221,6 +224,9 @@ class PointerMapper {
       }
       --node;
     }
+#if VIRTUAL_PTR_VERBOSE
+    std::cout << "\n::END: get_node\n\n";
+#endif  // VIRTUAL_PTR_VERBOSE
     return node;
   }
 
@@ -272,6 +278,9 @@ class PointerMapper {
    * Note: Currently we don't re-use existing spaces.
    */
   virtual_pointer_t add_pointer(buffer_t &&b) {
+#if VIRTUAL_PTR_VERBOSE
+    std::cout << "\n::BEGIN: add_pointer\n\n";
+#endif  // VIRTUAL_PTR_VERBOSE
     virtual_pointer_t retVal = nullptr;
     size_t bufSize = b.get_count();
     pMapNode_t p{b, bufSize, false};
@@ -284,7 +293,11 @@ class PointerMapper {
                 << " Buffer impl: " << p._b.get_impl().get() << std::endl;
 #endif  // VIRTUAL_PTR_VERBOSE
       m_pointerMap.emplace(initialVal, p);
-      return initialVal;
+
+#if VIRTUAL_PTR_VERBOSE
+    std::cout << "\n::END: add_pointer\n\n";
+#endif  // VIRTUAL_PTR_VERBOSE
+     return initialVal;
     }
     auto lastElemIter = get_insertion_point(bufSize);
     // If we are recovering an existing node,
@@ -311,6 +324,9 @@ class PointerMapper {
               << std::dec << " Size: " << bufSize << " Buffer impl: "
               << m_pointerMap.rbegin()->second._b.get_impl().get() << std::endl;
 #endif  // VIRTUAL_PTR_VERBOSE
+#if VIRTUAL_PTR_VERBOSE
+    std::cout << "\n::END: add_pointer\n\n";
+#endif  // VIRTUAL_PTR_VERBOSE
     return retVal;
   }
 
@@ -320,6 +336,9 @@ class PointerMapper {
    * space that we have freed.
    */
   void remove_pointer(const virtual_pointer_t ptr) {
+#if VIRTUAL_PTR_VERBOSE
+    std::cout << "\n::BEGIN: remove_pointer\n\n";
+#endif  // VIRTUAL_PTR_VERBOSE
     auto node = this->get_node(ptr);
 
     // If node is the last one, nothing to do,
@@ -352,6 +371,10 @@ class PointerMapper {
                 << ((n.second._free) ? "Freed" : "Usable") << ", "
                 << n.second._b.get_count() << " }" << std::endl;
     }
+#endif  // VIRTUAL_PTR_VERBOSE
+
+#if VIRTUAL_PTR_VERBOSE
+    std::cout << "\n::END: remove_pointer\n\n";
 #endif  // VIRTUAL_PTR_VERBOSE
   }
 
