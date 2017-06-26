@@ -44,11 +44,44 @@ using namespace codeplay;
 
 using buffer_t = PointerMapper::buffer_t;
 
-TEST(space, basic_test) {
+int n = 10000;
+
+TEST(space, add_only) {
+  //Expect: memory usage grows
   PointerMapper pMap;
   {
-    int n = 100;
     float* ptrs[n];
+    for(int i = 0; i < n; i++)
+    {
+      ptrs[i] = static_cast<float *>(SYCLmalloc(100 * sizeof(float), pMap));
+    }
+  }
+}
+
+TEST(space, remove_in_order) {
+  //Expect: memory usage grows, then stays the same
+  PointerMapper pMap;
+  {
+    float* ptrs[n];
+
+    for(int i = 0; i < n; i++)
+    {
+      ptrs[i] = static_cast<float *>(SYCLmalloc(100 * sizeof(float), pMap));
+    }
+
+    for(int i = 0; i < n; i++)
+    {
+      SYCLfree(ptrs[i], pMap);
+    }
+  }
+}
+
+TEST(space, remove_reverse_order) {
+  //Expect: memory usage grows, then goes down
+  PointerMapper pMap;
+  {
+    float* ptrs[n];
+
     for(int i = 0; i < n; i++)
     {
       ptrs[i] = static_cast<float *>(SYCLmalloc(100 * sizeof(float), pMap));
@@ -57,6 +90,30 @@ TEST(space, basic_test) {
     for(int i = n-1; i > 1; i--)
     {
       SYCLfree(ptrs[i], pMap);
+    }
+  }
+}
+
+TEST(space, add_remove_same_size) {
+  //Expect: memory usage stays low
+  PointerMapper pMap;
+  {
+    for(int i = 0; i < n; i++)
+    {
+      auto ptr = static_cast<float *>(SYCLmalloc(100 * sizeof(float), pMap));
+      SYCLfree(ptr, pMap);
+    }
+  }
+}
+
+TEST(space, add_remove_diff_size) {
+  //Expect: memory usage grows
+  PointerMapper pMap;
+  {
+    for(int i = 0; i < n; i++)
+    {
+      auto ptr = static_cast<float *>(SYCLmalloc(1* i * sizeof(float), pMap));
+      SYCLfree(ptr, pMap);
     }
   }
 }
