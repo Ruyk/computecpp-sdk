@@ -98,10 +98,17 @@ TEST(space, add_remove_same_size) {
   //Expect: memory usage stays low
   PointerMapper pMap;
   {
-    for(int i = 0; i < n; i++)
+    float* ptrs[n];
+
+    for(int i = 0; i < 5; i++)
     {
-      auto ptr = static_cast<float *>(SYCLmalloc(100 * sizeof(float), pMap));
-      SYCLfree(ptr, pMap);
+      ptrs[i] = static_cast<float *>(SYCLmalloc(n * sizeof(float), pMap));
+    }
+
+    for(int i = 5; i < n; i++)
+    {
+      SYCLfree(ptrs[i-5], pMap);
+      ptrs[i] = static_cast<float *>(SYCLmalloc(n * sizeof(float), pMap));
     }
   }
 }
@@ -110,10 +117,17 @@ TEST(space, add_remove_diff_size) {
   //Expect: memory usage grows
   PointerMapper pMap;
   {
-    for(int i = 0; i < n; i++)
+    float* ptrs[n];
+
+    for(int i = 0; i < 5; i++)
     {
-      auto ptr = static_cast<float *>(SYCLmalloc(1* i * sizeof(float), pMap));
-      SYCLfree(ptr, pMap);
+      ptrs[i] = static_cast<float *>(SYCLmalloc(n * sizeof(float), pMap));
+    }
+
+    for(int i = 5; i < n; i++)
+    {
+      SYCLfree(ptrs[i-5], pMap);
+      ptrs[i] = static_cast<float *>(SYCLmalloc(1* (n-i) * sizeof(float), pMap));
     }
   }
 }

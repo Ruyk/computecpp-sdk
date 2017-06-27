@@ -37,8 +37,7 @@
 
 #ifndef VIRTUAL_PTR_VERBOSE
 // Show extra information when allocating and de-allocating
-#define VIRTUAL_PTR_VERBOSE 1
-//#define VIRTUAL_PTR_VERBOSE 0
+#define VIRTUAL_PTR_VERBOSE 0
 #endif  // VIRTUAL_PTR_VERBOSE
 
 namespace codeplay {
