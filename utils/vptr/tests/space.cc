@@ -44,7 +44,7 @@ using namespace codeplay;
 
 using buffer_t = PointerMapper::buffer_t;
 
-int n = 10000;
+int n = 100;
 
 TEST(space, add_only) {
   //Expect: memory usage grows
@@ -129,5 +129,46 @@ TEST(space, add_remove_diff_size) {
       SYCLfree(ptrs[i-5], pMap);
       ptrs[i] = static_cast<float *>(SYCLmalloc(1* (n-i) * sizeof(float), pMap));
     }
+  }
+}
+
+TEST(space, fragmentation) {
+  PointerMapper pMap;
+  {
+    auto length1 = 100;
+    auto length2 = 50;
+    auto length3 = 50;
+    auto length4 = 100;
+
+    auto ptr1 = static_cast<float *>(SYCLmalloc(length1*sizeof(float), pMap));
+    auto ptr2 = static_cast<float *>(SYCLmalloc(length2*sizeof(float), pMap));
+    auto ptr3 = static_cast<float *>(SYCLmalloc(length3*sizeof(float), pMap));
+    auto ptr4 = static_cast<float *>(SYCLmalloc(length4*sizeof(float), pMap));
+
+    // Remove the second pointer
+    SYCLfree(ptr2, pMap);
+    // The pointer is freed
+    ASSERT_TRUE(pMap.get_node(ptr2)->second._free); 
+
+    // Add a new pointer, half the size of the removed pointer
+    auto newSize = length2*sizeof(float)/2;
+    auto ptr5 = static_cast<float *>(SYCLmalloc(newSize, pMap));
+    // New pointer reuses the space of the removed pointer
+    ASSERT_EQ(ptr2, ptr5); 
+    // The remaining space is freed and of correct size
+    auto ptrFree = ptr5+length2/2;
+    auto freeSize = length2*sizeof(float) - newSize;
+    ASSERT_TRUE(pMap.get_node(ptrFree)->second._free);
+    ASSERT_EQ(freeSize, pMap.get_node(ptrFree)->second._size);
+
+    // Free the node after the new free space
+    // They are two separate nodes
+    /* TODO (Vanya)
+    ASSERT_NE(ptr3, ptrFree);
+    SYCLfree(ptr3, pMap);
+    // The two freed spaces are now fused
+    ASSERT_EQ(freeSize+length3*sizeof(float), pMap.get_node(ptrFree)->second._size);
+    ASSERT_EQ(pMap.get_node(ptr3), pMap.get_node(ptrFree));
+    */
   }
 }

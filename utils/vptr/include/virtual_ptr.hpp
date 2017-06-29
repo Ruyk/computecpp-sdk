@@ -37,7 +37,7 @@
 
 #ifndef VIRTUAL_PTR_VERBOSE
 // Show extra information when allocating and de-allocating
-#define VIRTUAL_PTR_VERBOSE 0
+#define VIRTUAL_PTR_VERBOSE 1
 #endif  // VIRTUAL_PTR_VERBOSE
 
 namespace codeplay {
@@ -171,7 +171,7 @@ class PointerMapper {
     if (!m_freeList.empty()) {
       // lets try to re-use an existing block
       for (auto freeElem : m_freeList) {
-        if (freeElem->second._size == requiredSize) {
+        if (freeElem->second._size >= requiredSize) {
           retVal = freeElem;
           reuse = true;
           // Element is not going to be free anymore
@@ -209,6 +209,8 @@ class PointerMapper {
     for (auto &n : m_pointerMap) {
       std::cout << static_cast<long>(n.first) << " { "
                 << n.second._b.get_impl().get() << ", " << n.second._free
+                                                << ", " << n.second._size
+                                                << ", " << n.second._b.get_size()
                 << " }" << std::endl;
     }
 #endif  // VIRTUAL_PTR_VERBOSE
@@ -276,6 +278,8 @@ class PointerMapper {
    * Adds a pointer to the map and returns the virtual pointer id.
    * Note: Currently we don't re-use existing spaces.
    */
+template <
+    typename buffer_allocator = cl::sycl::default_allocator<buffer_data_type> >
   virtual_pointer_t add_pointer(buffer_t &&b) {
 #if VIRTUAL_PTR_VERBOSE
     std::cout << "\n::BEGIN: add_pointer\n\n";
@@ -299,19 +303,30 @@ class PointerMapper {
      return initialVal;
     }
     auto lastElemIter = get_insertion_point(bufSize);
-    // If we are recovering an existing node,
+    // If we are recovering an existing node...
+    // TODO(Vanya): rewrite comment
     // since we only recover nodes of the same size, we simply
     // replace the buffer
     if (lastElemIter->second._free) {
       lastElemIter->second._b = b;
-      // Note: We set the node as not freed here, once the
-      // new buffer is assigned.
-      // However, we remove it from the free list in the
-      // get_insertion_point function.
-      // If an exception happens in between the two, the
-      // node will be not freed, but will be unreachable from
-      // the free list.
       lastElemIter->second._free = false;
+
+      // If we have extra free space available in the node, 
+      // add a new node with the remaining space
+      if(lastElemIter->second._size > bufSize)
+      {
+        // create a new node with the remaining space
+        auto remainingSize = lastElemIter->second._size - bufSize;
+        using buffer_t = cl::sycl::buffer<buffer_data_type, 1, buffer_allocator>;
+        buffer_t b2(cl::sycl::range<1>{remainingSize});
+        pMapNode_t p2{b2, remainingSize, true};
+
+        // update size of the current node
+        lastElemIter->second._size = bufSize;
+
+        // add the new free node
+        m_pointerMap.emplace(lastElemIter->first + bufSize, p2);
+      }
       retVal = lastElemIter->first;
     } else {
       size_t lastSize = lastElemIter->second._size;
@@ -329,7 +344,7 @@ class PointerMapper {
     return retVal;
   }
 
-  /* remove_pointer.
+  /* space.
    * Removes the given pointer from the map.
    * Currently we dont re-cover the gaps in the virtual address
    * space that we have freed.
@@ -358,8 +373,28 @@ class PointerMapper {
         }
       } while (m_pointerMap.rbegin()->second._free);
     } else {
-      node->second._free = true;
-      m_freeList.emplace(node);
+      // look for free neighbouring nodes to fuse
+      // fuse forward
+      // TODO(Vanya)
+      
+      // fuse back
+      // TODO(Vanya)
+      /*j
+      while((--node)->second._free)
+      {
+        auto currentSize = (++node)->second._size;
+        (--node)->second._size += currentSize;
+        m_pointerMap.erase(++node);
+        --node;
+      }
+      ++node;
+      */
+      
+      if(!node->second._free)
+      {
+        node->second._free = true;
+        m_freeList.emplace(node);
+      }
     }
 #if VIRTUAL_PTR_VERBOSE
     std::cout << "New list after removing: " << static_cast<long>(ptr)
@@ -426,7 +461,7 @@ template <
 inline void *SYCLmalloc(size_t size, PointerMapper &pMap) {
   // Create a generic buffer of the given size
   using buffer_t = cl::sycl::buffer<buffer_data_type, 1, buffer_allocator>;
-  auto thePointer = pMap.add_pointer(buffer_t(cl::sycl::range<1>{size}));
+  auto thePointer = pMap.add_pointer<buffer_allocator>(buffer_t(cl::sycl::range<1>{size}));
   // Store the buffer on the global list
   return static_cast<void *>(thePointer);
 }
