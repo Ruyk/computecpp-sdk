@@ -243,6 +243,8 @@ class PointerMapper {
     return buf;
   }
 
+  using placeholder_t = cl::sycl::codeplay::access::placeholder;
+
   /**
    * @brief Returns an accessor to the buffer of the given virtual pointer
    * @param accessMode
@@ -251,9 +253,11 @@ class PointerMapper {
    */
   template <sycl_acc_mode access_mode,
             sycl_acc_target access_target = sycl_acc_target::global_buffer>
-  cl::sycl::accessor<buffer_data_type, 1, access_mode, access_target>
+  cl::sycl::detail::accessor_common<buffer_data_type, 1, access_mode, access_target, placeholder_t::false_t>
   get_access(const virtual_pointer_t ptr) {
-    return get_buffer(ptr).get_access<access_mode, access_target>();
+
+    auto buf = get_node(ptr)->second._b;
+    return cl::sycl::detail::accessor_common<buffer_data_type, 1, access_mode, access_target, placeholder_t::false_t>(buf);
   }
 
   /**
@@ -266,9 +270,11 @@ class PointerMapper {
    */
   template <sycl_acc_mode access_mode,
             sycl_acc_target access_target = sycl_acc_target::global_buffer>
-  cl::sycl::accessor<buffer_data_type, 1, access_mode, access_target>
+  cl::sycl::detail::accessor_common<buffer_data_type, 1, access_mode, access_target, placeholder_t::false_t>
   get_access(const virtual_pointer_t ptr, cl::sycl::handler &cgh) {
-    return get_buffer(ptr).get_access<access_mode, access_target>(cgh);
+
+    auto buffer = get_node(ptr)->second._b;
+    return cl::sycl::detail::accessor_common<buffer_data_type, 1, access_mode, access_target, placeholder_t::false_t>(buffer, cgh);
   }
 
   /*
