@@ -37,7 +37,7 @@
 
 #ifndef VIRTUAL_PTR_VERBOSE
 // Show extra information when allocating and de-allocating
-#define VIRTUAL_PTR_VERBOSE 0
+#define VIRTUAL_PTR_VERBOSE 1
 #endif  // VIRTUAL_PTR_VERBOSE
 
 namespace codeplay {
@@ -171,7 +171,7 @@ class PointerMapper {
     if (!m_freeList.empty()) {
       // lets try to re-use an existing block
       for (auto freeElem : m_freeList) {
-        if (freeElem->second._size == requiredSize) {
+        if (freeElem->second._size >= requiredSize) {
           retVal = freeElem;
           reuse = true;
           // Element is not going to be free anymore
@@ -209,7 +209,7 @@ class PointerMapper {
     for (auto &n : m_pointerMap) {
       std::cout << static_cast<long>(n.first) << " { "
                 << n.second._b.get_impl().get() << ", " << n.second._free
-                << " }" << std::endl;
+                << ", " << n.second._size << " }" << std::endl;
     }
 #endif  // VIRTUAL_PTR_VERBOSE
     // The previous element to the lower bound is the node that
@@ -299,19 +299,29 @@ class PointerMapper {
      return initialVal;
     }
     auto lastElemIter = get_insertion_point(bufSize);
+    // TODO(Vanya): Change the comments
     // If we are recovering an existing node,
     // since we only recover nodes of the same size, we simply
     // replace the buffer
     if (lastElemIter->second._free) {
       lastElemIter->second._b = b;
-      // Note: We set the node as not freed here, once the
-      // new buffer is assigned.
-      // However, we remove it from the free list in the
-      // get_insertion_point function.
-      // If an exception happens in between the two, the
-      // node will be not freed, but will be unreachable from
-      // the free list.
       lastElemIter->second._free = false;
+
+      if(lastElemIter->second._size > bufSize)
+      {
+        // create a new node with the remaining space
+        auto remainingSize = lastElemIter->second._size - bufSize;
+        pMapNode_t p2{b, remainingSize, true};
+
+        // update size of the current node
+        lastElemIter->second._size = bufSize;
+
+        // add the new free node
+        m_pointerMap.emplace(lastElemIter->first + bufSize, p2);
+        auto node = get_node(lastElemIter->first + bufSize);
+        m_freeList.emplace(node);
+      }
+
       retVal = lastElemIter->first;
     } else {
       size_t lastSize = lastElemIter->second._size;
@@ -368,7 +378,7 @@ class PointerMapper {
       std::cout << static_cast<long>(n.first) << " { "
                 << n.second._b.get_impl().get() << ", "
                 << ((n.second._free) ? "Freed" : "Usable") << ", "
-                << n.second._b.get_count() << " }" << std::endl;
+                << n.second._size << ", " << n.second._b.get_count() << " }" << std::endl;
     }
 #endif  // VIRTUAL_PTR_VERBOSE
 
@@ -405,7 +415,8 @@ class PointerMapper {
   struct SortBySize {
     bool operator()(typename pointerMap_t::iterator a,
                     typename pointerMap_t::iterator b) {
-      return (a->first != b->first) && (a->second <= b->second);
+      return ((a->first < b->first) && (a->second <= b->second) ||
+              (a->first < b->first) && (b->second <= a->second) ); 
     }
   };
 
