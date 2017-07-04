@@ -44,7 +44,7 @@ using namespace codeplay;
 
 using buffer_t = PointerMapper::buffer_t;
 
-int n = 20;
+int n = 10000;
 int startCount = 5;
 
 TEST(space, add_only) {
@@ -123,7 +123,7 @@ TEST(space, add_remove_same_size) {
   }
 }
 
-TEST(space, add_remove_diff_size) {
+TEST(space, add_remove_decreasing_size) {
   //Expect: memory usage grows
   PointerMapper pMap;
   {
@@ -139,6 +139,27 @@ TEST(space, add_remove_diff_size) {
     {
       SYCLfree(ptrs[i-startCount], pMap);
       ptrs[i] = static_cast<float *>(SYCLmalloc(1* (n-i) * sizeof(float), pMap));
+      ASSERT_EQ(pMap.count(), startCount);
+    }
+  }
+}
+
+TEST(space, add_remove_increasing_size) {
+  //Expect: memory usage grows
+  PointerMapper pMap;
+  {
+    float* ptrs[n];
+
+    for(int i = 0; i < startCount; i++)
+    {
+      ptrs[i] = static_cast<float *>(SYCLmalloc(1 * sizeof(float), pMap));
+      ASSERT_EQ(pMap.count(), i+1);
+    }
+
+    for(int i = startCount; i < n; i++)
+    {
+      SYCLfree(ptrs[i-startCount], pMap);
+      ptrs[i] = static_cast<float *>(SYCLmalloc(i * sizeof(float), pMap));
       ASSERT_EQ(pMap.count(), startCount);
     }
   }
@@ -165,7 +186,6 @@ TEST(space, fragmentation) {
     // Add a new pointer, half the size of the removed pointer
     auto newSize = length2*sizeof(float)/2;
     auto ptr5 = static_cast<float *>(SYCLmalloc(newSize, pMap));
-    /*
     // New pointer reuses the space of the removed pointer
     ASSERT_EQ(ptr2, ptr5); 
     // The remaining space is freed and of correct size
@@ -173,16 +193,15 @@ TEST(space, fragmentation) {
     auto freeSize = length2*sizeof(float) - newSize;
     ASSERT_TRUE(pMap.get_node(ptrFree)->second._free);
     ASSERT_EQ(freeSize, pMap.get_node(ptrFree)->second._size);
-    */
 
+    /*
     // Free the node after the new free space
     // They are two separate nodes
-    /* TODO (Vanya)
     ASSERT_NE(ptr3, ptrFree);
     SYCLfree(ptr3, pMap);
-    // The two freed spaces are now fused
-    ASSERT_EQ(freeSize+length3*sizeof(float), pMap.get_node(ptrFree)->second._size);
+    // The two freed spaces are now fused - they return the same free node
     ASSERT_EQ(pMap.get_node(ptr3), pMap.get_node(ptrFree));
+    ASSERT_EQ(freeSize+length3*sizeof(float), pMap.get_node(ptrFree)->second._size);
     */
   }
 }

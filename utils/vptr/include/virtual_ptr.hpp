@@ -37,7 +37,7 @@
 
 #ifndef VIRTUAL_PTR_VERBOSE
 // Show extra information when allocating and de-allocating
-#define VIRTUAL_PTR_VERBOSE 1
+#define VIRTUAL_PTR_VERBOSE 0
 #endif  // VIRTUAL_PTR_VERBOSE
 
 namespace codeplay {
@@ -198,9 +198,6 @@ class PointerMapper {
    * \throws std::out:of_range if the pointer is not found or pMap is empty
    */
   typename pointerMap_t::iterator get_node(const virtual_pointer_t ptr) {
-#if VIRTUAL_PTR_VERBOSE
-    std::cout << "\n::BEGIN: get_node\n\n";
-#endif  // VIRTUAL_PTR_VERBOSE
     if (this->count() == 0) {
       throw std::out_of_range("There are no pointers allocated");
     }
@@ -223,9 +220,6 @@ class PointerMapper {
       }
       --node;
     }
-#if VIRTUAL_PTR_VERBOSE
-    std::cout << "\n::END: get_node\n\n";
-#endif  // VIRTUAL_PTR_VERBOSE
     return node;
   }
 
@@ -277,9 +271,6 @@ class PointerMapper {
    * Note: Currently we don't re-use existing spaces.
    */
   virtual_pointer_t add_pointer(buffer_t &&b) {
-#if VIRTUAL_PTR_VERBOSE
-    std::cout << "\n::BEGIN: add_pointer\n\n";
-#endif  // VIRTUAL_PTR_VERBOSE
     virtual_pointer_t retVal = nullptr;
     size_t bufSize = b.get_count();
     pMapNode_t p{b, bufSize, false};
@@ -292,17 +283,12 @@ class PointerMapper {
                 << " Buffer impl: " << p._b.get_impl().get() << std::endl;
 #endif  // VIRTUAL_PTR_VERBOSE
       m_pointerMap.emplace(initialVal, p);
-
-#if VIRTUAL_PTR_VERBOSE
-    std::cout << "\n::END: add_pointer\n\n";
-#endif  // VIRTUAL_PTR_VERBOSE
-     return initialVal;
+      return initialVal;
     }
     auto lastElemIter = get_insertion_point(bufSize);
-    // TODO(Vanya): Change the comments
-    // If we are recovering an existing node,
-    // since we only recover nodes of the same size, we simply
-    // replace the buffer
+    // If we are recovering an existing free node,
+    // if the recovered node is bigger than the inserted one
+    // add a new free node with the remaining space
     if (lastElemIter->second._free) {
       lastElemIter->second._b = b;
       lastElemIter->second._free = false;
@@ -333,9 +319,6 @@ class PointerMapper {
               << std::dec << " Size: " << bufSize << " Buffer impl: "
               << m_pointerMap.rbegin()->second._b.get_impl().get() << std::endl;
 #endif  // VIRTUAL_PTR_VERBOSE
-#if VIRTUAL_PTR_VERBOSE
-    std::cout << "\n::END: add_pointer\n\n";
-#endif  // VIRTUAL_PTR_VERBOSE
     return retVal;
   }
 
@@ -345,9 +328,6 @@ class PointerMapper {
    * space that we have freed.
    */
   void remove_pointer(const virtual_pointer_t ptr) {
-#if VIRTUAL_PTR_VERBOSE
-    std::cout << "\n::BEGIN: remove_pointer\n\n";
-#endif  // VIRTUAL_PTR_VERBOSE
     auto node = this->get_node(ptr);
 
     // If node is the last one, nothing to do,
@@ -379,12 +359,8 @@ class PointerMapper {
       std::cout << static_cast<long>(n.first) << " { "
                 << n.second._b.get_impl().get() << ", "
                 << ((n.second._free) ? "Freed" : "Usable") << ", "
-                << n.second._size << ", " << n.second._b.get_count() << " }" << std::endl;
+                << n.second._b.get_count() << ", " << n.second._size << " }" << std::endl;
     }
-#endif  // VIRTUAL_PTR_VERBOSE
-
-#if VIRTUAL_PTR_VERBOSE
-    std::cout << "\n::END: remove_pointer\n\n";
 #endif  // VIRTUAL_PTR_VERBOSE
   }
 
@@ -416,8 +392,8 @@ class PointerMapper {
   struct SortBySize {
     bool operator()(typename pointerMap_t::iterator a,
                     typename pointerMap_t::iterator b) {
-      return ((a->first < b->first) && (a->second <= b->second) ||
-              (a->first < b->first) && (b->second <= a->second) ); 
+      return ((a->first < b->first) && (a->second <= b->second)) ||
+             ((a->first < b->first) && (b->second <= a->second)); 
     }
   };
 
