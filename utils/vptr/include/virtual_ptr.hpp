@@ -329,74 +329,60 @@ class PointerMapper {
   void remove_pointer(const virtual_pointer_t ptr) {
     auto node = this->get_node(ptr);
 
-    // If node is the last one
-    // simply remove and try to recover space
-    // if there are various consecutive free blocks
-    // at the end.
-    if (node->first == m_pointerMap.rbegin()->first) {
-      do {
-        // Delete the entry on the free list
-        auto freeNodePtr = --m_pointerMap.end();
-        auto freeListPtr = m_freeList.find(freeNodePtr);
-        if (freeListPtr != std::end(m_freeList)) {
-          m_freeList.erase(freeListPtr);
-        }
-        m_pointerMap.erase(--(m_pointerMap.end()));
-        if (m_pointerMap.size() == 0) {
-          // The map is empty
-          break;
-        }
-      } while (m_pointerMap.rbegin()->second._free);
+    // If node not the last one, try to fuse the node
+    // with free nodes before and after it
+    node->second._free = true;
+    m_freeList.emplace(node);
+
+    // fuse with following nodes if free 
+    while (node != m_pointerMap.end()) {
+      // save the current node
+      auto current_node = node;
+
+      // if following node is free
+      // remove it and extend the current node with its size
+      node++;
+      if (!node->second._free) {
+        node--;
+        break;
+      }
+      auto fwd_size = node->second._size;
+      m_freeList.erase(node);
+      m_pointerMap.erase(node);
+
+      node = current_node;
+      node->second._size += fwd_size;
     }
 
-    // If node not the last one, try to fuse with
-    // free nodes before and after
-    else {
-      node->second._free = true;
-      m_freeList.emplace(node);
-
-      // fuse with previous nodes with if free
-      while (node != m_pointerMap.begin()) {
-        // if previous node is free, extend it
-        // with the size of the current one
-        auto current_size = node->second._size;
-        node--;
-        if (!node->second._free) {
-          node++;
-          break;
-        }
-        node->second._size += current_size;
-
-        // save the previous node
-        auto prev_node = node;
-
-        // remove the current node
+    // fuse with previous nodes if free
+    while (node != m_pointerMap.begin()) {
+      // if previous node is free, extend it
+      // with the size of the current one
+      auto current_size = node->second._size;
+      node--;
+      if (!node->second._free) {
         node++;
-        m_freeList.erase(node);
-        m_pointerMap.erase(node);
-
-        // point to the previous nodeprevious node
-        node = prev_node;
-      };
-
-      // check if following nodes are free and fuse
-      while (node != m_pointerMap.end()) {
-        // save the current node
-        auto current_node = node;
-
-        // if following node is free
-        // remove it and extend the current node with its size
-        node++;
-        if (!node->second._free) {
-          break;
-        }
-        auto fwd_size = node->second._size;
-        m_freeList.erase(node);
-        m_pointerMap.erase(node);
-
-        node = current_node;
-        node->second._size += fwd_size;
+        break;
       }
+      node->second._size += current_size;
+
+      // save the previous node
+      auto prev_node = node;
+
+      // remove the current node
+      node++;
+      m_freeList.erase(node);
+      m_pointerMap.erase(node);
+
+      // point to the previous node
+      node = prev_node;
+    };
+
+    // if after fusing we are left with the
+    // last node free simply remove it
+    if (node == --m_pointerMap.end()) {
+      m_freeList.erase(node);
+      m_pointerMap.erase(node);
     }
 
 #if VIRTUAL_PTR_VERBOSE
