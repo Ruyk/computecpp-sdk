@@ -232,8 +232,8 @@ class PointerMapper {
         cl::sycl::buffer<buffer_data_type, 1, cl::sycl::detail::base_allocator>;
 
     // get_node() returns a `buffer_mem`, so we need to cast it to a `buffer<>`.
-    // We can do this without the `buffer_mem` being a pointer, as we 
-    // only declare member variables in the base class (`buffer_mem`) and not in 
+    // We can do this without the `buffer_mem` being a pointer, as we
+    // only declare member variables in the base class (`buffer_mem`) and not in
     // the child class (`buffer<>).
     buffer_t buf(*(static_cast<buffer_t *>(&get_node(ptr)->second._b)));
     return buf;
@@ -293,8 +293,7 @@ class PointerMapper {
       lastElemIter->second._b = b;
       lastElemIter->second._free = false;
 
-      if(lastElemIter->second._size > bufSize)
-      {
+      if (lastElemIter->second._size > bufSize) {
         // create a new node with the remaining space
         auto remainingSize = lastElemIter->second._size - bufSize;
         pMapNode_t p2{b, remainingSize, true};
@@ -315,8 +314,8 @@ class PointerMapper {
       m_pointerMap.emplace(retVal, p);
     }
 #if VIRTUAL_PTR_VERBOSE
-    std::cout << "Adding pointer " << std::hex << static_cast<long>(retVal)
-              << std::dec << " Size: " << bufSize << " Buffer impl: "
+    std::cout << "Adding pointer " << static_cast<long>(retVal) << std::dec
+              << " Size: " << bufSize << " Buffer impl: "
               << m_pointerMap.rbegin()->second._b.get_impl().get() << std::endl;
 #endif  // VIRTUAL_PTR_VERBOSE
     return retVal;
@@ -330,7 +329,7 @@ class PointerMapper {
   void remove_pointer(const virtual_pointer_t ptr) {
     auto node = this->get_node(ptr);
 
-    // If node is the last one, nothing to do,
+    // If node is the last one
     // simply remove and try to recover space
     // if there are various consecutive free blocks
     // at the end.
@@ -348,10 +347,50 @@ class PointerMapper {
           break;
         }
       } while (m_pointerMap.rbegin()->second._free);
-    } else {
+    }
+
+    // If node not the last one, try to fuse with
+    // free nodes before and after
+    else {
       node->second._free = true;
       m_freeList.emplace(node);
+
+      // fuse with previous nodes with if free
+      while (node != m_pointerMap.begin()) {
+        // if previous node is free, extend it
+        // with the size of the current one
+        auto current_size = node->second._size;
+        node--;
+        if (!node->second._free) {
+          break;
+        }
+        node->second._size += current_size;
+
+        // save the previous node
+        auto prev_node = node;
+
+        // remove the current node
+        node++;
+        m_freeList.erase(node);
+        m_pointerMap.erase(node);
+
+        // point to the previous nodeprevious node
+        node = prev_node;
+      };
+
+      /*
+      // check if following nodes are free and fuse
+      while((++node)->second._free)
+      {
+        auto fwd_size = node->second._size;
+        (--node)->second._size += fwd_size;
+        m_freeList.erase(++node);
+        m_pointerMap.erase(node);
+        --node;
+      }
+      */
     }
+
 #if VIRTUAL_PTR_VERBOSE
     std::cout << "New list after removing: " << static_cast<long>(ptr)
               << std::endl;
@@ -359,7 +398,8 @@ class PointerMapper {
       std::cout << static_cast<long>(n.first) << " { "
                 << n.second._b.get_impl().get() << ", "
                 << ((n.second._free) ? "Freed" : "Usable") << ", "
-                << n.second._b.get_count() << ", " << n.second._size << " }" << std::endl;
+                << n.second._b.get_count() << ", " << n.second._size << " }"
+                << std::endl;
     }
 #endif  // VIRTUAL_PTR_VERBOSE
   }
@@ -393,7 +433,7 @@ class PointerMapper {
     bool operator()(typename pointerMap_t::iterator a,
                     typename pointerMap_t::iterator b) {
       return ((a->first < b->first) && (a->second <= b->second)) ||
-             ((a->first < b->first) && (b->second <= a->second)); 
+             ((a->first < b->first) && (b->second <= a->second));
     }
   };
 
