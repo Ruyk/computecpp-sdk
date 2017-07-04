@@ -357,7 +357,8 @@ class PointerMapper {
     if (node->first == m_pointerMap.rbegin()->first) {
       do {
         // Delete the entry on the free list
-        auto freeListPtr = m_freeList.find(node);
+        auto freeNodePtr = --m_pointerMap.end();
+        auto freeListPtr = m_freeList.find(freeNodePtr);
         if (freeListPtr != std::end(m_freeList)) {
           m_freeList.erase(freeListPtr);
         }
