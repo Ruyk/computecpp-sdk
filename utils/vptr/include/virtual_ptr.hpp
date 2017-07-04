@@ -32,8 +32,8 @@
 #include <CL/sycl.hpp>
 #include <iostream>
 
-#include <unordered_map>
 #include <queue>
+#include <unordered_map>
 
 #ifndef VIRTUAL_PTR_VERBOSE
 // Show extra information when allocating and de-allocating
@@ -362,6 +362,7 @@ class PointerMapper {
         auto current_size = node->second._size;
         node--;
         if (!node->second._free) {
+          node++;
           break;
         }
         node->second._size += current_size;
@@ -378,17 +379,24 @@ class PointerMapper {
         node = prev_node;
       };
 
-      /*
       // check if following nodes are free and fuse
-      while((++node)->second._free)
-      {
+      while (node != m_pointerMap.end()) {
+        // save the current node
+        auto current_node = node;
+
+        // if following node is free
+        // remove it and extend the current node with its size
+        node++;
+        if (!node->second._free) {
+          break;
+        }
         auto fwd_size = node->second._size;
-        (--node)->second._size += fwd_size;
-        m_freeList.erase(++node);
+        m_freeList.erase(node);
         m_pointerMap.erase(node);
-        --node;
+
+        node = current_node;
+        node->second._size += fwd_size;
       }
-      */
     }
 
 #if VIRTUAL_PTR_VERBOSE
