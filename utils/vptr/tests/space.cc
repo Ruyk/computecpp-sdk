@@ -173,6 +173,8 @@ TEST(space, fragmentation) {
     // The pointer is freed
     ASSERT_TRUE(pMap.get_node(ptr2)->second._free);
 
+    /** Test fragmentation of free space when new node is added
+     *  to a free space of larger size **/
     // Add a new pointer, half the size of the removed pointer
     auto length5 = length2 / 2;
     auto size5 = length5 * sizeof(float);
@@ -185,25 +187,28 @@ TEST(space, fragmentation) {
     ASSERT_TRUE(pMap.get_node(ptrFree)->second._free);
     ASSERT_EQ(freeSize, pMap.get_node(ptrFree)->second._size);
 
+    /** Test fuse back when removing nodes **/
     // Free the node **after** the new free space
     // They are two separate nodes
     ASSERT_NE(ptr3, ptrFree);
     SYCLfree(ptr3, pMap);
     // The two freed spaces are now fused
     // they return the same free node
-    // and of the same size
+    // and are of the same size
     ASSERT_EQ(pMap.get_node(ptr3), pMap.get_node(ptrFree));
     freeSize += length3 * sizeof(float);
     ASSERT_EQ(freeSize, pMap.get_node(ptrFree)->second._size);
 
+    /** Test fuse forward when removing nodes **/
     // Free the node **before** the free space
     // They are two separate nodes
     ASSERT_NE(ptrFree, ptr5);
     SYCLfree(ptr5, pMap);
     // The two freed spaces are now fused
     // they return the same free node
-    // and of the same size
+    // and are of the same size
     ASSERT_EQ(pMap.get_node(ptr5), pMap.get_node(ptrFree));
+    ptrFree = ptr5;
     freeSize += size5;
     ASSERT_EQ(freeSize, pMap.get_node(ptrFree)->second._size);
   }

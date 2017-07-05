@@ -268,7 +268,6 @@ class PointerMapper {
 
   /* add_pointer.
    * Adds a pointer to the map and returns the virtual pointer id.
-   * Note: Currently we don't re-use existing spaces.
    */
   virtual_pointer_t add_pointer(buffer_t &&b) {
     virtual_pointer_t retVal = nullptr;
@@ -328,7 +327,6 @@ class PointerMapper {
    * @param node A reference to the free node to be fused
    */
   void fuse_forward(typename pointerMap_t::iterator &node) {
-    // fuse with following nodes if free
     while (node != std::prev(m_pointerMap.end())) {
       // if following node is free
       // remove it and extend the current node with its size
@@ -351,7 +349,6 @@ class PointerMapper {
    * @param node A reference to the free node to be fused
    */
   void fuse_backward(typename pointerMap_t::iterator &node) {
-    // fuse with previous nodes if free
     while (node != m_pointerMap.begin()) {
       // if previous node is free, extend it
       // with the size of the current one
@@ -372,8 +369,6 @@ class PointerMapper {
 
   /* remove_pointer.
    * Removes the given pointer from the map.
-   * Currently we dont re-cover the gaps in the virtual address
-   * space that we have freed.
    */
   void remove_pointer(const virtual_pointer_t ptr) {
     auto node = this->get_node(ptr);
