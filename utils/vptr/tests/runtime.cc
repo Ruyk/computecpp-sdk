@@ -18,10 +18,10 @@
  *
  *  Codeplay's ComputeCpp SDK
  *
- *   basic.cc
+ *   runtime.cc
  *
  *  Description:
- *   Basic tests of the pointer mapper utility header
+ *   Tests for the pointer_mapper registered in the runtime
  *
  **************************************************************************/
 
@@ -41,7 +41,7 @@ const sycl_acc_mode sycl_acc_rw = sycl_acc_mode::read_write;
 
 using namespace codeplay;
 
-TEST(pointer_mapper, basic_test) {
+TEST(runtime, basic_test) {
   // Ensure that the pointer mapper in the runtime is null
   auto runtime_pmppr_null = cl::sycl::detail::get_pointer_mapper();
   ASSERT_TRUE(PointerMapper::is_nullptr(runtime_pmppr_null));

@@ -43,6 +43,9 @@
 namespace codeplay {
 
 using buffer_data_type = uint8_t;
+using sycl_acc_target = cl::sycl::access::target;
+using sycl_acc_mode = cl::sycl::access::mode;
+
 /**
  * PointerMapper
  *  Associates fake pointers with buffers.
@@ -237,6 +240,34 @@ class PointerMapper {
     // the child class (`buffer<>).
     buffer_t buf(*(static_cast<buffer_t *>(&get_node(ptr)->second._b)));
     return buf;
+  }
+
+  /**
+   * @brief Returns an accessor to the buffer of the given virtual pointer
+   * @param accessMode
+   * @param accessTarget
+   * @param ptr The virtual pointer
+   */
+  template <sycl_acc_mode access_mode,
+            sycl_acc_target access_target = sycl_acc_target::global_buffer>
+  cl::sycl::accessor<buffer_data_type, 1, access_mode, access_target>
+  get_access(const virtual_pointer_t ptr) {
+    return get_buffer(ptr).get_access<access_mode, access_target>();
+  }
+
+  /**
+   * @brief Returns an accessor to the buffer of the given virtual pointer
+   *        in the given command group scope
+   * @param accessMode
+   * @param accessTarget
+   * @param ptr The virtual pointer
+   * @param cgh Reference to the command group scope
+   */
+  template <sycl_acc_mode access_mode,
+            sycl_acc_target access_target = sycl_acc_target::global_buffer>
+  cl::sycl::accessor<buffer_data_type, 1, access_mode, access_target>
+  get_access(const virtual_pointer_t ptr, cl::sycl::handler &cgh) {
+    return get_buffer(ptr).get_access<access_mode, access_target>(cgh);
   }
 
   /*
