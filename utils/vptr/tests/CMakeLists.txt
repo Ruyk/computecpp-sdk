@@ -63,6 +63,18 @@ if (COMPUTECPP_INTERFACE)
   add_test(RuntimeTests runtime)
 endif()
 
+
+add_executable(space space.cc)
+set_property(TARGET space PROPERTY CXX_STANDARD 11)
+target_link_libraries(space PUBLIC ${gtest_BINARY_DIR}/libgtest.a)
+target_link_libraries(space PUBLIC ${gtest_BINARY_DIR}/libgtest_main.a)
+target_link_libraries(space PUBLIC pthread)
+add_dependencies(space gtest_main)
+add_dependencies(space gtest)
+add_sycl_to_target(space  ${CMAKE_CURRENT_BINARY_DIR}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/space.cc)
+add_test(SpaceTests space)
+
 add_executable(accessor accessor.cc)
 set_property(TARGET accessor PROPERTY CXX_STANDARD 11)
 target_link_libraries(accessor PUBLIC ${gtest_BINARY_DIR}/libgtest.a)
@@ -73,3 +85,4 @@ add_dependencies(accessor gtest)
 add_sycl_to_target(accessor  ${CMAKE_CURRENT_BINARY_DIR}
                     ${CMAKE_CURRENT_SOURCE_DIR}/accessor.cc)
 add_test(AccessorTests accessor)
+

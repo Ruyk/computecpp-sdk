@@ -37,7 +37,6 @@
 
 #ifndef VIRTUAL_PTR_VERBOSE
 // Show extra information when allocating and de-allocating
-// #define VIRTUAL_PTR_VERBOSE 1
 #define VIRTUAL_PTR_VERBOSE 0
 #endif  // VIRTUAL_PTR_VERBOSE
 
@@ -157,7 +156,7 @@ class PointerMapper {
       _b.set_final_data(nullptr);
     }
 
-    bool operator<(const pMapNode_t &rhs) { return (_size < rhs._size); }
+    bool operator<=(const pMapNode_t &rhs) { return (_size <= rhs._size); }
   };
 
   /** Storage of the pointer / buffer tree
@@ -175,7 +174,7 @@ class PointerMapper {
     if (!m_freeList.empty()) {
       // lets try to re-use an existing block
       for (auto freeElem : m_freeList) {
-        if (freeElem->second._size == requiredSize) {
+        if (freeElem->second._size >= requiredSize) {
           retVal = freeElem;
           reuse = true;
           // Element is not going to be free anymore
@@ -185,7 +184,7 @@ class PointerMapper {
       }
     }
     if (!reuse) {
-      retVal = (--m_pointerMap.end());
+      retVal = std::prev(m_pointerMap.end());
     }
     return retVal;
   }
@@ -210,7 +209,7 @@ class PointerMapper {
     for (auto &n : m_pointerMap) {
       std::cout << static_cast<long>(n.first) << " { "
                 << n.second._b.get_impl().get() << ", " << n.second._free
-                << " }" << std::endl;
+                << ", " << n.second._size << " }" << std::endl;
     }
 #endif  // VIRTUAL_PTR_VERBOSE
     // The previous element to the lower bound is the node that
@@ -300,7 +299,6 @@ class PointerMapper {
 
   /* add_pointer.
    * Adds a pointer to the map and returns the virtual pointer id.
-   * Note: Currently we don't re-use existing spaces.
    */
   virtual_pointer_t add_pointer(buffer_t &&b) {
     virtual_pointer_t retVal = nullptr;
@@ -318,19 +316,27 @@ class PointerMapper {
       return initialVal;
     }
     auto lastElemIter = get_insertion_point(bufSize);
-    // If we are recovering an existing node,
-    // since we only recover nodes of the same size, we simply
-    // replace the buffer
+    // We are recovering an existing free node
     if (lastElemIter->second._free) {
       lastElemIter->second._b = b;
-      // Note: We set the node as not freed here, once the
-      // new buffer is assigned.
-      // However, we remove it from the free list in the
-      // get_insertion_point function.
-      // If an exception happens in between the two, the
-      // node will be not freed, but will be unreachable from
-      // the free list.
       lastElemIter->second._free = false;
+
+      // If the recovered node is bigger than the inserted one
+      // add a new free node with the remaining space
+      if (lastElemIter->second._size > bufSize) {
+        // create a new node with the remaining space
+        auto remainingSize = lastElemIter->second._size - bufSize;
+        pMapNode_t p2{b, remainingSize, true};
+
+        // update size of the current node
+        lastElemIter->second._size = bufSize;
+
+        // add the new free node
+        auto newFreePtr = lastElemIter->first + bufSize;
+        auto freeNode = m_pointerMap.emplace(newFreePtr, p2).first;
+        m_freeList.emplace(freeNode);
+      }
+
       retVal = lastElemIter->first;
     } else {
       size_t lastSize = lastElemIter->second._size;
@@ -338,42 +344,81 @@ class PointerMapper {
       m_pointerMap.emplace(retVal, p);
     }
 #if VIRTUAL_PTR_VERBOSE
-    std::cout << "Adding pointer " << std::hex << static_cast<long>(retVal)
-              << std::dec << " Size: " << bufSize << " Buffer impl: "
+    std::cout << "Adding pointer " << static_cast<long>(retVal) << std::dec
+              << " Size: " << bufSize << " Buffer impl: "
               << m_pointerMap.rbegin()->second._b.get_impl().get() << std::endl;
 #endif  // VIRTUAL_PTR_VERBOSE
     return retVal;
   }
 
+  /**
+   * @brief Fuses the given node with the previous nodes in the
+   *        pointer map if they are free
+   *
+   * @param node A reference to the free node to be fused
+   */
+  void fuse_forward(typename pointerMap_t::iterator &node) {
+    while (node != std::prev(m_pointerMap.end())) {
+      // if following node is free
+      // remove it and extend the current node with its size
+      auto fwd_node = std::next(node);
+      if (!fwd_node->second._free) {
+        break;
+      }
+      auto fwd_size = fwd_node->second._size;
+      m_freeList.erase(fwd_node);
+      m_pointerMap.erase(fwd_node);
+
+      node->second._size += fwd_size;
+    }
+  }
+
+  /**
+   * @brief Fuses the given node with the following nodes in the
+   *        pointer map if they are free
+   *
+   * @param node A reference to the free node to be fused
+   */
+  void fuse_backward(typename pointerMap_t::iterator &node) {
+    while (node != m_pointerMap.begin()) {
+      // if previous node is free, extend it
+      // with the size of the current one
+      auto prev_node = std::prev(node);
+      if (!prev_node->second._free) {
+        break;
+      }
+      prev_node->second._size += node->second._size;
+
+      // remove the current node
+      m_freeList.erase(node);
+      m_pointerMap.erase(node);
+
+      // point to the previous node
+      node = prev_node;
+    }
+  }
+
   /* remove_pointer.
    * Removes the given pointer from the map.
-   * Currently we dont re-cover the gaps in the virtual address
-   * space that we have freed.
    */
   void remove_pointer(const virtual_pointer_t ptr) {
     auto node = this->get_node(ptr);
 
-    // If node is the last one, nothing to do,
-    // simply remove and try to recover space
-    // if there are various consecutive free blocks
-    // at the end.
-    if (node->first == m_pointerMap.rbegin()->first) {
-      do {
-        // Delete the entry on the free list
-        auto freeListPtr = m_freeList.find(node);
-        if (freeListPtr != std::end(m_freeList)) {
-          m_freeList.erase(freeListPtr);
-        }
-        m_pointerMap.erase(--(m_pointerMap.end()));
-        if (m_pointerMap.size() == 0) {
-          // The map is empty
-          break;
-        }
-      } while (m_pointerMap.rbegin()->second._free);
-    } else {
-      node->second._free = true;
-      m_freeList.emplace(node);
+    node->second._free = true;
+    m_freeList.emplace(node);
+
+    // Fuse the node
+    // with free nodes before and after it
+    fuse_forward(node);
+    fuse_backward(node);
+
+    // If after fusing the node is the last one
+    // simply remove it (since it is free)
+    if (node == std::prev(m_pointerMap.end())) {
+      m_freeList.erase(node);
+      m_pointerMap.erase(node);
     }
+
 #if VIRTUAL_PTR_VERBOSE
     std::cout << "New list after removing: " << static_cast<long>(ptr)
               << std::endl;
@@ -381,7 +426,8 @@ class PointerMapper {
       std::cout << static_cast<long>(n.first) << " { "
                 << n.second._b.get_impl().get() << ", "
                 << ((n.second._free) ? "Freed" : "Usable") << ", "
-                << n.second._b.get_count() << " }" << std::endl;
+                << n.second._b.get_count() << ", " << n.second._size << " }"
+                << std::endl;
     }
 #endif  // VIRTUAL_PTR_VERBOSE
   }
@@ -414,7 +460,8 @@ class PointerMapper {
   struct SortBySize {
     bool operator()(typename pointerMap_t::iterator a,
                     typename pointerMap_t::iterator b) {
-      return (a->second < b->second);
+      return ((a->first < b->first) && (a->second <= b->second)) ||
+             ((a->first < b->first) && (b->second <= a->second));
     }
   };
 
