@@ -285,13 +285,13 @@ class PointerMapper {
       return initialVal;
     }
     auto lastElemIter = get_insertion_point(bufSize);
-    // If we are recovering an existing free node,
-    // if the recovered node is bigger than the inserted one
-    // add a new free node with the remaining space
+    // We are recovering an existing free node
     if (lastElemIter->second._free) {
       lastElemIter->second._b = b;
       lastElemIter->second._free = false;
 
+      // If the recovered node is bigger than the inserted one
+      // add a new free node with the remaining space
       if (lastElemIter->second._size > bufSize) {
         // create a new node with the remaining space
         auto remainingSize = lastElemIter->second._size - bufSize;
@@ -301,9 +301,9 @@ class PointerMapper {
         lastElemIter->second._size = bufSize;
 
         // add the new free node
-        m_pointerMap.emplace(lastElemIter->first + bufSize, p2);
-        auto node = get_node(lastElemIter->first + bufSize);
-        m_freeList.emplace(node);
+        auto newFreePtr = lastElemIter->first + bufSize;
+        auto freeNode = m_pointerMap.emplace(newFreePtr, p2).first;
+        m_freeList.emplace(freeNode);
       }
 
       retVal = lastElemIter->first;
