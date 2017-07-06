@@ -27,12 +27,12 @@ If the available pointer has more free size than necessary, the implementation c
 
 * *Minimised fragmentation* is implemented in `SYCLfree()`.
 When a pointer is being freed, the implementation flags it as free and adds it to the set of freed pointers.
-While doing that, it tries to fuse the freed space with the blocks around it (before and after), provided that they are free, using the below algorithms.
+While doing that, it tries to fuse the freed space with the blocks around it (before and after), provided that they are free, using the methods below:
 
-** *fuse forward*:
+** `fuse_forward()`:
 Check that the pointer *after* the freed one is free. If it is, add the size of the forward pointer to the freed one and remove the forward pointer.
 
-** *fuse backward*:
+** `fuse_backward()`:
 Check that the pointer *before* the freed one is free. If it is, add the size of the freed pointer to the previous one and remove the freed pointer.
 
 If in the end the final free pointer is at the end of the allocated space, it is removed.

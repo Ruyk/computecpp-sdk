@@ -2,7 +2,7 @@ Software Managed Virtual Pointer
 ================================
 
 This folder contains the implementation of a software-managed virtual
-pointer that facilitates a pointer interface for SYCL buffers.
+pointer that facilitates a raw pointer interface for SYCL buffers.
 This virtual address
 space is non-dereferenceable on the host, but accessors can be obtained
 in the SYCL command groups.
