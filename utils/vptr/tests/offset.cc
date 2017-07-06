@@ -30,8 +30,8 @@
 #include <CL/sycl.hpp>
 #include <iostream>
 
-#include "virtual_ptr.hpp"
 #include "pointer_alias.hpp"
+#include "virtual_ptr.hpp"
 
 using sycl_acc_target = cl::sycl::access::target;
 const sycl_acc_target sycl_acc_host = sycl_acc_target::host_buffer;
@@ -58,7 +58,7 @@ struct kernel {
 
   void operator()() {
     auto float_off = offset_ / sizeof(float);
-    float *ptr = reinterpret_cast<float *>(&*accB_.get_pointer());
+    float *ptr = cl::sycl::codeplay::get_device_ptr_as<float>(accB_);
     ptr[float_off] = i_ * SIZE_ + j_;
   };
 };
@@ -85,13 +85,16 @@ TEST(offset, basic_test) {
     cl::sycl::queue q;
     q.submit([&b, offset](cl::sycl::handler &h) {
       auto accB = b.get_access<sycl_acc_rw>(h);
-      h.single_task<class foo1>([=]() { accB[offset] = 1.0f; });
+      h.single_task<class foo1>([=]() {
+        cl::sycl::codeplay::get_device_ptr_as<float>(accB)[offset] = 1.0f;
+      });
     });
 
     // Only way of reading the value is using a host accessor
     {
       auto hostAcc = b.get_access<sycl_acc_rw, sycl_acc_host>();
-      ASSERT_EQ(hostAcc[offset], 1.0f);
+      ASSERT_EQ(cl::sycl::codeplay::get_host_ptr_as<float>(hostAcc)[offset],
+                1.0f);
     }
 
     SYCLfree(myPtr, pMap);
@@ -142,7 +145,7 @@ TEST(offset, 2d_indexing) {
       auto b = pMap.get_buffer(myPtr);
       ASSERT_EQ(b.get_size(), SIZE * SIZE * sizeof(float));
       auto hostAcc = b.get_access<sycl_acc_rw, sycl_acc_host>();
-      float *fPtr = reinterpret_cast<float *>(&*hostAcc.get_pointer());
+      float *fPtr = cl::sycl::codeplay::get_host_ptr_as<float>(hostAcc);
       for (unsigned i = 0; i < SIZE; i++) {
         for (unsigned j = 0; j < SIZE; j++) {
           ASSERT_EQ(fPtr[i * SIZE + j], i * SIZE + j);

@@ -30,8 +30,8 @@
 #include <CL/sycl.hpp>
 #include <iostream>
 
-#include "virtual_ptr.hpp"
 #include "pointer_alias.hpp"
+#include "virtual_ptr.hpp"
 
 using sycl_acc_target = cl::sycl::access::target;
 const sycl_acc_target sycl_acc_host = sycl_acc_target::host_buffer;
@@ -59,13 +59,15 @@ TEST(pointer_mapper, basic_test) {
     cl::sycl::queue q;
     q.submit([&b](cl::sycl::handler &h) {
       auto accB = b.get_access<sycl_acc_rw>(h);
-      h.single_task<class foo1>([=]() { accB[0] = 1.0f; });
+      h.single_task<class foo1>([=]() {
+        cl::sycl::codeplay::get_device_ptr_as<float>(accB)[0] = 1.0f;
+      });
     });
 
     // Only way of reading the value is using a host accessor
     {
       auto hostAcc = b.get_access<sycl_acc_rw, sycl_acc_host>();
-      ASSERT_EQ(hostAcc[0], 1.0f);
+      ASSERT_EQ(cl::sycl::codeplay::get_host_ptr_as<float>(hostAcc)[0], 1.0f);
     }
     SYCLfree(myPtr, pMap);
     ASSERT_EQ(pMap.count(), 0u);
