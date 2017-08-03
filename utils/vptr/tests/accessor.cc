@@ -129,10 +129,20 @@ TEST(accessor, allocator) {
   {
     ASSERT_EQ(pMap.count(), 0u);
 
-    // add a pointer with the allocator type
+    // add a pointer with the base allocator type
     void *ptrA = SYCLmalloc(100 * sizeof(int), pMap);
 
+    // get the buffer with the base allocator type
+    auto bufA = pMap.get_buffer(ptrA);
+
+    ASSERT_EQ(pMap.count(), 1u);
+
+    // add a pointer with the allocator type
+    void *ptrB = SYCLmalloc<alloc_t>(100 * sizeof(int), pMap);
+
     // get the buffer with the allocator type
-    cl::sycl::buffer<uint8_t, 1, alloc_t> buf = pMap.get_buffer(ptrA);
+    cl::sycl::buffer<uint8_t, 1, alloc_t> bufB = pMap.get_buffer<alloc_t>(ptrB);
+
+    ASSERT_EQ(pMap.count(), 2u);
   }
 }
